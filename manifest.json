@@ -1,0 +1,20 @@
+{
+  "name": "私の森道 2026",
+  "short_name": "私の森道",
+  "description": "ナゴヤ人間制作の「私の森道」アプリ。2026年の森道市場で行ったお店・来年行きたいお店をピックアップして画像で出力できます。",
+  "lang": "ja",
+  "dir": "ltr",
+  "start_url": ".",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf7ef",
+  "theme_color": "#de1815",
+  "categories": ["events", "music", "navigation"],
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

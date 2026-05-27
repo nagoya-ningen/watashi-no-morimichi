@@ -17,9 +17,10 @@
        ウキウキ通り 18-20 など）を正しく絞り込むために必須。 */
     shopDay: 'all',
     myplanTab: 'shops',
-    /* マイプラン「行きたい出店」内の第2層タブ。
-       wishlist=既存fav(行きたい) / visited=行った / nextyear=来年行きたい */
-    myplanShopSubTab: 'wishlist',
+    /* マイプラン「めぐった出店」内の第2層タブ。
+       visited=行った / nextyear=来年行きたい
+       （wishlist は UI から廃止。state.fav.shops データは互換性のため保持。） */
+    myplanShopSubTab: 'visited',
     fav: load('mm2026_fav', { artists: [], shops: [] }),
     checks: load('mm2026_checks', {}),
     recent: load('mm2026_recent', { shops: [], artists: [] }),
@@ -462,7 +463,9 @@
     updateTabBadge();
   }
   function updateTabBadge() {
-    const n = state.fav.artists.length + state.fav.shops.length;
+    /* 出店側は visited + nextYear のユニーク数で集計（行きたい廃止のため） */
+    const shopIds = new Set([...state.visited, ...state.nextYear]);
+    const n = state.fav.artists.length + shopIds.size;
     let b = $('#tabBadge');
     const btn = $('.tabbar button[data-view="myplan"]');
     if (!btn) return;
@@ -628,22 +631,19 @@
     renderShopList();
   }
   function shopTile(s) {
-    const f = isFav('shops', s.id);
     const v = isVisited(s.id);
     const m = hasNote(s.id);
     const ny = isNextYear(s.id);
-    /* タイル下部に3状態トグルボタン（行きたい・行った・来年）を並べ、
+    /* タイル下部に2状態トグルボタン（行った・来年）を並べ、
        一覧画面から直接ステータスを切り替えられるようにする。
+       「行きたい」は会期終了後の振り返り用途では不要なため撤去。
        メモがある場合だけ、右上に小さな📝マークを表示（操作対象ではない）。 */
     const memoMark = m ? '<span class="tile__memo-mark" title="メモあり">📝</span>' : '';
     const t = el('div', 'tile tile--shop' + (v ? ' tile--visited' : ''),
       '<div class="tile__name">' + esc(s.name) + '</div>' +
       '<div class="tile__meta">📍 ' + esc(shortName(s.zoneName)) + '</div>' +
       memoMark +
-      '<div class="tile__statebar">' +
-        '<button class="state-btn state-btn--fav '      + (f  ? 'on' : '') + '" data-act="fav"  aria-label="行きたい">' +
-          '<span class="state-btn__ico">' + (f  ? '★' : '☆')   + '</span>' +
-          '<span class="state-btn__lbl">行きたい</span></button>' +
+      '<div class="tile__statebar tile__statebar--two">' +
         '<button class="state-btn state-btn--visited '  + (v  ? 'on' : '') + '" data-act="visit" aria-label="行った">' +
           '<span class="state-btn__ico">' + (v  ? '✓' : '○')    + '</span>' +
           '<span class="state-btn__lbl">行った</span></button>' +
@@ -653,19 +653,16 @@
       '</div>'
     );
     t.onclick = () => openShop(s.id);
-    /* 3ボタンのクリック：伝播を止めて、それぞれの toggle を実行 */
+    /* 2ボタンのクリック：伝播を止めて、それぞれの toggle を実行 */
     t.querySelectorAll('.state-btn').forEach(btn => {
       btn.onclick = e => {
         e.stopPropagation();
         const act = btn.getAttribute('data-act');
-        if (act === 'fav') {
-          const added = toggleFav('shops', s.id); saveFav(); updateTabBadge();
-          toast(added ? '★ 行きたいに追加' : '行きたいから削除');
-        } else if (act === 'visit') {
-          const added = toggleVisited(s.id); saveVisited();
+        if (act === 'visit') {
+          const added = toggleVisited(s.id); saveVisited(); updateTabBadge();
           toast(added ? '✓ 行ったに追加' : '行ったから削除');
         } else {
-          const added = toggleNextYear(s.id); saveNextYear();
+          const added = toggleNextYear(s.id); saveNextYear(); updateTabBadge();
           toast(added ? '🌱 来年に追加' : '来年から削除');
         }
         renderShopList();
@@ -719,8 +716,10 @@
     const root = $('#view-myplan');
     root.innerHTML = '';
     const tabs = el('div', 'seg-tabs');
-    /* 出店中心の振り返り体験を優先し、行きたい出店を左・観たい出演者を右に。 */
-    [['shops', '🛍️ 行きたい出店', state.fav.shops.length],
+    /* 出店中心の振り返り体験を優先し、めぐった出店を左・観たい出演者を右に。
+       「めぐった」のカウントは visited + nextYear のユニーク数（行きたい廃止）。 */
+    const shopPlanIds = new Set([...state.visited, ...state.nextYear]);
+    [['shops', '🛍️ めぐった出店', shopPlanIds.size],
      ['artists', '⭐ 観たい出演者', state.fav.artists.length]
     ].forEach(t => {
       const b = el('button', t[0] === state.myplanTab ? 'active' : '',
@@ -765,15 +764,16 @@
       root.appendChild(g);
       appendMyplanSettings(root);
     } else {
-      /* 「行きたい出店」タブ：第2層チップで wishlist / visited / nextyear を切替 */
+      /* 「めぐった出店」タブ：第2層チップで visited / nextyear を切替
+         （wishlist は廃止。会期終了後の振り返りに「行きたい」は不要なため。
+         状態が 'wishlist' のまま残っているユーザーは visited にフォールバック。） */
+      if (state.myplanShopSubTab === 'wishlist') state.myplanShopSubTab = 'visited';
       const subCounts = {
-        wishlist: state.fav.shops.length,
         visited: state.visited.length,
         nextyear: state.nextYear.length
       };
       const subTabs = el('div', 'chips chips--sub');
-      [['wishlist', '⭐ 行きたい'],
-       ['visited',  '✅ 行った'],
+      [['visited',  '✅ 行った'],
        ['nextyear', '🌱 来年']
       ].forEach(sb => {
         const c = el('button', 'chip' + (state.myplanShopSubTab === sb[0] ? ' active' : ''),
@@ -787,10 +787,7 @@
       const sub = state.myplanShopSubTab;
       let list = [];
       let emptyMsg = '';
-      if (sub === 'wishlist') {
-        list = SHOPS.filter(s => isFav('shops', s.id));
-        emptyMsg = '<div class="big">🛍️</div>行きたい出店を登録すると<br>ここに一覧表示されます';
-      } else if (sub === 'visited') {
+      if (sub === 'visited') {
         list = SHOPS.filter(s => isVisited(s.id));
         emptyMsg = '<div class="big">✅</div>出店をタップして「行った」を選ぶと<br>ここに記録されます';
       } else {
@@ -798,22 +795,22 @@
         emptyMsg = '<div class="big">🌱</div>「来年こそは」と思った出店を<br>出店から登録して残しておきましょう';
       }
 
-      /* 3軸とも 0 件のオンボーディング。第2層チップの直下に3ステップで使い方を案内 */
-      const totalCount = subCounts.wishlist + subCounts.visited + subCounts.nextyear;
+      /* 2軸とも 0 件のオンボーディング。第2層チップの直下に使い方を案内 */
+      const totalCount = subCounts.visited + subCounts.nextyear;
       if (totalCount === 0) {
         const ob = el('div', 'myplan-onboard');
         ob.innerHTML =
           '<div class="myplan-onboard__head">マイページの使い方</div>' +
           '<ol class="myplan-onboard__list">' +
             '<li><span class="myplan-onboard__n">1</span>' +
-              '<div><b>出店ページから ☆ を押す</b>' +
-              '<p>気になる店を「行きたい出店」に追加します。</p></div></li>' +
+              '<div><b>出店ページから「行った」「来年」を選ぶ</b>' +
+              '<p>めぐった店は「行った」、行きそびれた店は「来年」をタップ。</p></div></li>' +
             '<li><span class="myplan-onboard__n">2</span>' +
-              '<div><b>出店をタップしてステータスを選ぶ</b>' +
-              '<p>「行きたい」「行った」「来年こそは」を切り替えられます。</p></div></li>' +
+              '<div><b>店ごとにメモ・タグを残す</b>' +
+              '<p>おすすめ・また来たい・写真映え… 来年の自分への申し送りを置けます。</p></div></li>' +
             '<li><span class="myplan-onboard__n">3</span>' +
               '<div><b>ここに溜まる／画像でシェア</b>' +
-              '<p>「行った」「来年こそは」が溜まると、1枚の画像で残せます。</p></div></li>' +
+              '<p>「行った」「来年」が溜まると、1枚の画像で残せます。</p></div></li>' +
           '</ol>';
         const goShops = el('button', 'myplan-onboard__btn', '出店ページを開く');
         goShops.onclick = () => switchView('shops');
@@ -821,41 +818,8 @@
         root.appendChild(ob);
       }
 
-      /* wishlist サブタブの最上段：マイプランをシェアボタン。 */
-      if (sub === 'wishlist' && list.length) {
-        const shareBtn = el('button', 'plan-map-btn',
-          'マイプランをシェア');
-        shareBtn.onclick = () => showMyplanImagePreview();
-        root.appendChild(shareBtn);
-      }
-
-      /* nextyear サブタブの最上段：「今年の心残り」サジェスト
-         fav に入れたが visited に入っていない出店を抽出 → ワンタップで来年に一括追加 */
-      if (sub === 'nextyear') {
-        const regrets = SHOPS.filter(s =>
-          isFav('shops', s.id) && !isVisited(s.id) && !isNextYear(s.id));
-        if (regrets.length) {
-          const rec = el('div', 'regret-card');
-          rec.innerHTML =
-            '<div class="regret-card__head">次は、ここから — ' + regrets.length + ' 店</div>' +
-            '<div class="regret-card__sub">気になっていたけれど「行った」にチェックされていない出店です。ワンタップで来年リストに追加できます。</div>';
-          const addAll = el('button', 'btn btn--primary regret-card__btn',
-            '🌱 ' + regrets.length + ' 店をまとめて来年リストへ');
-          addAll.onclick = () => {
-            regrets.forEach(s => {
-              if (!isNextYear(s.id)) state.nextYear.push(s.id);
-            });
-            saveNextYear();
-            toast(regrets.length + ' 店を来年リストに追加');
-            renderMyplan();
-          };
-          rec.appendChild(addAll);
-          root.appendChild(rec);
-        }
-      }
-
       if (!list.length) {
-        /* 3軸とも0件のときはオンボーディングを優先表示し、empty state は出さない */
+        /* 2軸とも0件のときはオンボーディングを優先表示し、empty state は出さない */
         if (totalCount > 0) {
           root.appendChild(el('div', 'empty', emptyMsg));
         }
@@ -864,7 +828,7 @@
       }
       const g = el('div', 'list-grid');
       list.forEach(s => {
-        /* shopTile を再利用して 3 状態ボタンの仕様を出店一覧と統一する */
+        /* shopTile を再利用して 2 状態ボタンの仕様を出店一覧と統一する */
         const t = shopTile(s);
         /* 行ったサブタブでは、タイル下にメモのプレビュー（タグ＋本文先頭）を併記 */
         if (sub === 'visited') {
@@ -890,19 +854,15 @@
 
   /* マイプラン最下段の「設定」セクション：シェア／エクスポート／インポート */
   function appendMyplanSettings(root) {
-    /* シェア／画像書き出しは「もっと使いたい人」向けのアクション。
-       JSON 入出力（バックアップ）と段を分けて見せる。 */
-    const shareWrap = el('div', 'myplan-settings');
-    shareWrap.innerHTML = '<div class="myplan-settings__head">↗ マイプランをシェア</div>' +
-      '<div class="myplan-settings__sub">行きたい・行った・来年の総数を、画像 or テキストで友達に。</div>';
-    const shareRow = el('div', 'myplan-settings__btns');
-    const imgBtn = el('button', 'btn btn--ghost', '📸 画像で書き出す');
-    imgBtn.onclick = exportMyplanImage;
-    const textBtn = el('button', 'btn btn--ghost', '↗ テキストでシェア');
-    textBtn.onclick = shareMyplanText;
-    shareRow.appendChild(imgBtn);
-    shareRow.appendChild(textBtn);
-    shareWrap.appendChild(shareRow);
+    /* シェアは「画像を作る」体験を主役にする。テキストシェアは廃止し、
+       1つの大きな朱色ボタンで視認性を最大化（CTA を明確に1つに絞る）。 */
+    const shareWrap = el('div', 'myplan-share-cta');
+    shareWrap.innerHTML =
+      '<div class="myplan-share-cta__head">📸 「わたしの森道」画像を作成</div>' +
+      '<div class="myplan-share-cta__sub">めぐった出店と来年こそはの店を、1枚の雑誌風カードに。SNSへの共有や保存ができます。</div>';
+    const shareBtn = el('button', 'myplan-share-cta__btn', '「わたしの森道」画像を作成');
+    shareBtn.onclick = exportMyplanImage;
+    shareWrap.appendChild(shareBtn);
     root.appendChild(shareWrap);
 
     const wrap = el('div', 'myplan-settings');
@@ -952,11 +912,12 @@
     });
   }
 
-  /* シェア画像の色テーマ：10色。Magazine B 型構造を保ちつつ、号数違いとして
-     色のみを差し替える。すべて「アースカラー」系で森道のトーンを統一。
-     既存5色（モス・インディゴ・テラコッタ・チャコール・ミスト）に、色相を
-     時計回りに広げる新規5色（ハーブ・サンド・サクラ・ダスク・オーシャン）を追加。 */
+  /* シェア画像の色テーマ：15色。Magazine B 型構造を保ちつつ、号数違いとして
+     色のみを差し替える。アースカラー10色（落ち着いた森道らしさ）に加え、
+     vivid 5色（フレイム・シトラス・エメラルド・ロイヤル・フューシャ）を追加。
+     彩度・明度の高い原色系は、写真映え重視で派手にシェアしたいユーザー向け。 */
   const SHARE_THEMES = {
+    /* —— アースカラー10色 —— */
     moss:       { id:'moss',       label:'モス',       bg:'#1B3A2E', ivory:'#EFEAE0', accent:'#E8B547' }, /* 森 */
     herb:       { id:'herb',       label:'ハーブ',     bg:'#5C7A4F', ivory:'#F4F0DC', accent:'#C44A2E' }, /* 草・若葉 */
     sand:       { id:'sand',       label:'サンド',     bg:'#B8956A', ivory:'#FEFAEC', accent:'#3E5C48' }, /* 砂浜 */
@@ -966,9 +927,18 @@
     dusk:       { id:'dusk',       label:'ダスク',     bg:'#4A3E5A', ivory:'#F0E8DC', accent:'#E8B547' }, /* 夕暮れ・薄暮 */
     indigo:     { id:'indigo',     label:'インディゴ', bg:'#1F3540', ivory:'#EDE5D0', accent:'#C44A2E' }, /* 海・暖簾 */
     ocean:      { id:'ocean',      label:'オーシャン', bg:'#2E5A6B', ivory:'#E8E8DC', accent:'#E8B547' }, /* 深海・蒲郡の海 */
-    mist:       { id:'mist',       label:'ミスト',     bg:'#5E7A88', ivory:'#F3EFE4', accent:'#4A5D3A' }  /* 霧・地図 */
+    mist:       { id:'mist',       label:'ミスト',     bg:'#5E7A88', ivory:'#F3EFE4', accent:'#4A5D3A' }, /* 霧・地図 */
+    /* —— ヴィヴィッド5色（高彩度・高明度） —— */
+    flame:      { id:'flame',      label:'フレイム',   bg:'#E63946', ivory:'#FFF8F0', accent:'#FFD60A' }, /* 炎・夏祭り提灯 */
+    citrus:     { id:'citrus',     label:'シトラス',   bg:'#FFB700', ivory:'#1A1A1A', accent:'#D62828' }, /* 柑橘・夏空の太陽 */
+    emerald:    { id:'emerald',    label:'エメラルド', bg:'#06A77D', ivory:'#FFFAE7', accent:'#FFB703' }, /* 鮮緑・芝・葉 */
+    royal:      { id:'royal',      label:'ロイヤル',   bg:'#1E6FD9', ivory:'#FFFAE5', accent:'#FFB703' }, /* 鮮青・夏空 */
+    fuchsia:    { id:'fuchsia',    label:'フューシャ', bg:'#E63A77', ivory:'#FFF0F5', accent:'#FCE13D' }  /* 桃赤・南国の花 */
   };
-  const SHARE_THEME_ORDER = ['moss','herb','sand','sakura','terracotta','charcoal','dusk','indigo','ocean','mist'];
+  const SHARE_THEME_ORDER = [
+    'moss','herb','sand','sakura','terracotta','charcoal','dusk','indigo','ocean','mist',
+    'flame','citrus','emerald','royal','fuchsia'
+  ];
   function getCurrentShareTheme() {
     try {
       const id = localStorage.getItem('mm2026_share_theme');
@@ -1144,14 +1114,14 @@
 
     /* 9. 最下部の発行情報（左寄せ）と #ハッシュタグ（右下）
        行った日（attendedDays）が1件以上選択されているときのみ、
-       「行った日 ／ 5.22・5.24」を追加行として 1810 に挿入する。
-       0件のときは挿入せず、既存の発行情報のみを表示する（不自然な空白を避ける）。 */
+       選択された日付（例「5.22・5.24」）を 1810 に挿入する。
+       プレフィックスは付けず、日付のみで簡潔に。 */
     const attended = attendedDaysShort();
     if (attended) {
       ctx.textAlign = 'left';
       ctx.fillStyle = COLOR.mustard;
       ctx.font = '500 18px ' + FONT.mincho;
-      ctx.fillText('行った日 ／ ' + attended, 80, 1810);
+      ctx.fillText(attended, 80, 1810);
     }
     drawSpaced('MORIMICHI ICHIBA  2026', 80, 1840,
       '500 18px ' + FONT.sans, COLOR.mustard, 3);
@@ -1404,7 +1374,7 @@
       ctx.textAlign = 'left';
       ctx.fillStyle = COLOR.mustard;
       ctx.font = '500 18px ' + FONT.mincho;
-      ctx.fillText('行った日 ／ ' + attended, 80, 1810);
+      ctx.fillText(attended, 80, 1810);
     }
     drawSpaced('MORIMICHI ICHIBA  2026', 80, 1840,
       '500 18px ' + FONT.sans, COLOR.mustard, 3);
@@ -1750,7 +1720,6 @@
   function openShop(id) {
     const s = SHOPS.find(x => x.id === id); if (!s) return;
     pushRecent('shops', s.id);
-    const faved = isFav('shops', s.id);
     const visited = isVisited(s.id);
     const nextYr = isNextYear(s.id);
     const note = getNote(s.id);
@@ -1774,8 +1743,7 @@
            const d = FESTIVAL.days.find(x => x.id === id);
            return d ? d.label + '(' + ({FRI:'金',SAT:'土',SUN:'日'}[d.dow] || d.dow) + ')' : id;
          }).join('・')}のみ</div></div></div>` : ''}
-       <div class="modal__btns modal__btns--triple">
-         <button class="btn btn--fav ${faved ? 'on' : ''}" id="sFav" title="マイプランに追加">${faved ? '★ 行きたい' : '☆ 行きたい'}</button>
+       <div class="modal__btns modal__btns--double">
          <button class="btn btn--visited ${visited ? 'on' : ''}" id="sVisited" title="行った／訪問済み">${visited ? '✅ 行った' : '⬜ 行った'}</button>
          <button class="btn btn--nextyear ${nextYr ? 'on' : ''}" id="sNextYr" title="来年も行きたい">${nextYr ? '🌱 来年' : '🌿 来年'}</button>
        </div>
@@ -1788,21 +1756,16 @@
        <div class="modal__btns">
          <button class="btn btn--ghost" id="sShare">↗ この出店をシェア</button>
        </div>`);
-    $('#sFav').onclick = () => {
-      toast(toggleFav('shops', s.id) ? '★ マイプランに追加' : 'マイプランから削除');
-      saveFav(); openShop(id); updateTabBadge();
-      if (state.view === 'shops') renderShopList();
-      if (state.view === 'myplan') renderMyplan();
-    };
     $('#sVisited').onclick = () => {
       toast(toggleVisited(s.id) ? '✅ 行ったに追加' : '行ったから削除');
-      saveVisited(); openShop(id);
+      saveVisited(); openShop(id); updateTabBadge();
       if (state.view === 'shops') renderShopList();
       if (state.view === 'myplan') renderMyplan();
     };
     $('#sNextYr').onclick = () => {
       toast(toggleNextYear(s.id) ? '🌱 来年に追加' : '来年から削除');
-      saveNextYear(); openShop(id);
+      saveNextYear(); openShop(id); updateTabBadge();
+      if (state.view === 'shops') renderShopList();
       if (state.view === 'myplan') renderMyplan();
     };
     /* メモ：タグはクリックで toggle、本文は入力で debounce 保存 */

@@ -1319,7 +1319,7 @@
     /* 5. 特集タイトル（明朝、雑誌の特集コピー風） */
     ctx.fillStyle = COLOR.ivory;
     ctx.font = '500 62px ' + FONT.mincho;
-    ctx.fillText('森道で聞いた ' + n + ' 組。', W/2, 510);
+    ctx.fillText('森道で聴いた ' + n + ' 組。', W/2, 510);
 
     /* 6. 目次見出し（左寄せ、マスタード、等幅小） */
     ctx.textAlign = 'left';

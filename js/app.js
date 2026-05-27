@@ -768,6 +768,12 @@
          （wishlist は廃止。会期終了後の振り返りに「行きたい」は不要なため。
          状態が 'wishlist' のまま残っているユーザーは visited にフォールバック。） */
       if (state.myplanShopSubTab === 'wishlist') state.myplanShopSubTab = 'visited';
+
+      /* 画像作成 CTA：トップタブ直下・サブタブ直上に配置することで、
+         「めぐった出店タブを開いた瞬間に最も目立つアクション」として提示する。
+         以前は最下段にあったが、スクロールしないと見えず CTA が埋もれていた。 */
+      appendMyplanShareCta(root);
+
       const subCounts = {
         visited: state.visited.length,
         nextyear: state.nextYear.length
@@ -852,10 +858,9 @@
     }
   }
 
-  /* マイプラン最下段の「設定」セクション：シェア／エクスポート／インポート */
-  function appendMyplanSettings(root) {
-    /* シェアは「画像を作る」体験を主役にする。テキストシェアは廃止し、
-       1つの大きな朱色ボタンで視認性を最大化（CTA を明確に1つに絞る）。 */
+  /* 画像作成 CTA の生成：めぐった出店タブの上部に挿入する用。
+     renderMyplan から直接呼ばれる（appendMyplanSettings からは分離）。 */
+  function appendMyplanShareCta(root) {
     const shareWrap = el('div', 'myplan-share-cta');
     shareWrap.innerHTML =
       '<div class="myplan-share-cta__head">📸 「わたしの森道」画像を作成</div>' +
@@ -864,6 +869,11 @@
     shareBtn.onclick = exportMyplanImage;
     shareWrap.appendChild(shareBtn);
     root.appendChild(shareWrap);
+  }
+
+  /* マイプラン最下段の「設定」セクション：エクスポート／インポートのみ。
+     画像作成 CTA はトップタブ直下に分離（appendMyplanShareCta）。 */
+  function appendMyplanSettings(root) {
 
     const wrap = el('div', 'myplan-settings');
     wrap.innerHTML = '<div class="myplan-settings__head">⚙️ データの保存</div>' +

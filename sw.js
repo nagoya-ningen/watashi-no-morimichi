@@ -1,4 +1,4 @@
-/* 私の森道 — Service Worker
+/* わたしの森道 — Service Worker
    コード（html/css/js）はネットワーク優先＝常に最新を表示。
    画像はキャッシュ優先＝オフラインでも高速表示。 */
 const CACHE = 'watashi-no-morimichi-v1';

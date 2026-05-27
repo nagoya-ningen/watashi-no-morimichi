@@ -1,12 +1,15 @@
 /* ============================================================
-   私の森道 — アプリ本体
+   わたしの森道 — アプリ本体
 ============================================================ */
 (function () {
   'use strict';
 
   const state = {
     view: 'myplan',
-    day: defaultDay(),
+    /* ヘッダーの日付タブで「自分が行った日」を複数選択した結果（dayId の配列）。
+       0〜3 件すべて許容され、画像シェアにのみ反映される。
+       出店一覧の shopDay フィルタ／アーティストの artistDay フィルタとは別物。 */
+    attendedDays: load('mm2026_attended_days', []),
     artistQuery: '', artistDay: 'all',
     shopQuery: '', shopZone: 'all',
     /* 出店ショップの出店日フィルタ。'all'=全日。d1/d2/d3=その日に出店する店のみ。
@@ -64,6 +67,45 @@
     if (!Array.isArray(state.nextYear)) state.nextYear = [];
     if (!state.notes || typeof state.notes !== 'object' || Array.isArray(state.notes))
       state.notes = {};
+    /* attendedDays は dayId（'d1'/'d2'/'d3'）の文字列配列。
+       破損データは要素単位で除外し、最終的に FESTIVAL.days に存在する id のみを残す。 */
+    if (!Array.isArray(state.attendedDays)) {
+      state.attendedDays = [];
+    } else {
+      const validIds = FESTIVAL.days.map(d => d.id);
+      state.attendedDays = state.attendedDays.filter(
+        x => typeof x === 'string' && validIds.indexOf(x) !== -1
+      );
+    }
+  }
+  /* 行った日（attendedDays）API — 出店の visited とは独立。
+     画像シェアの「行った日」表記にのみ使う。 */
+  function saveAttendedDays() { save('mm2026_attended_days', state.attendedDays); }
+  function isAttended(dayId) { return state.attendedDays.indexOf(dayId) !== -1; }
+  function toggleAttended(dayId) {
+    const i = state.attendedDays.indexOf(dayId);
+    if (i === -1) { state.attendedDays.push(dayId); }
+    else { state.attendedDays.splice(i, 1); }
+    saveAttendedDays();
+  }
+  /* 選択中の行った日を「5/22(金)・5/24(日)」形式の文字列で返す。
+     0件なら空文字、複数件は FESTIVAL.days の元順を保って中黒で連結する。
+     UI ／ テキストシェア向けの一般形。 */
+  function attendedDaysText() {
+    if (!state.attendedDays.length) return '';
+    return FESTIVAL.days
+      .filter(d => isAttended(d.id))
+      .map(d => d.label + '(' + (DOW_JA[d.dow] || d.dow) + ')')
+      .join('・');
+  }
+  /* 画像シェア用の短い表記。発行情報の「5.22 - 24」の表記と揃え、
+     「5.22・5.24」形式で返す。 */
+  function attendedDaysShort() {
+    if (!state.attendedDays.length) return '';
+    return FESTIVAL.days
+      .filter(d => isAttended(d.id))
+      .map(d => d.label.replace('/', '.'))
+      .join('・');
   }
   function saveFav() { save('mm2026_fav', state.fav); }
   function isFav(t, id) { return state.fav[t].indexOf(id) !== -1; }
@@ -165,11 +207,6 @@
   function sameDate(a, b) {
     return a.getFullYear() === b.getFullYear() &&
            a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-  }
-  function defaultDay() {
-    const t = new Date();
-    const d = FESTIVAL.days.find(x => sameDate(mkDate(x.date), t));
-    return d ? d.id : 'd1';
   }
   function todayDay() {
     const n = new Date();
@@ -378,11 +415,20 @@
      ヘッダー / ナイトモード
   ============================================================ */
   function renderHeader() {
-    $('#dayTabs').innerHTML = FESTIVAL.days.map(d =>
-      `<button class="day-tab ${d.id === state.day ? 'active' : ''}" data-day="${d.id}">
-         <b class="en">${d.label}</b><span>${d.dow}</span></button>`).join('');
+    /* デイタブは「自分が行った日」を複数選択するUI。
+       選択中は attended クラス（緑：var(--state-visited)）で示し、
+       aria-pressed で複数選択の状態を補助技術にも伝える。 */
+    $('#dayTabs').innerHTML = FESTIVAL.days.map(d => {
+      const on = isAttended(d.id);
+      return `<button class="day-tab ${on ? 'attended' : ''}" data-day="${d.id}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${d.label} ${d.dow} を行った日として${on ? '解除' : '選択'}">
+         <b class="en">${d.label}</b><span>${d.dow}</span></button>`;
+    }).join('');
     $$('#dayTabs .day-tab').forEach(b => b.onclick = () => {
-      state.day = b.dataset.day; renderHeader();
+      toggleAttended(b.dataset.day);
+      renderHeader();
+      /* マイプラン画面（画像プレビューの元データ）を再描画。
+         他ビューでは影響なし。 */
+      if (state.view === 'myplan') renderMyplan();
     });
   }
   function tickClock() {
@@ -894,26 +940,35 @@
     const lines = [];
     if (v > 0) lines.push('今年の森道、めぐったのは ' + v + ' 店。');
     if (n > 0) lines.push('来年こそは ' + n + ' 店。');
+    /* 行った日が選択されていれば併記する。 */
+    const att = attendedDaysText();
+    if (att) lines.push('行った日：' + att);
     lines.push('');
     lines.push('#森道市場2026 #森道市場');
     shareOrCopy({
-      title: '2026 年の、私の森道。',
+      title: '2026 年の、わたしの森道。',
       text: lines.join('\n'),
       url: APP_URL
     });
   }
 
-  /* シェア画像の色テーマ：5つ。Magazine B 型構造を保ちつつ、号数違いとして
+  /* シェア画像の色テーマ：10色。Magazine B 型構造を保ちつつ、号数違いとして
      色のみを差し替える。すべて「アースカラー」系で森道のトーンを統一。
-     過去のデザインリサーチ（森道らしさ・シティモダン両方）から厳選した5色。 */
+     既存5色（モス・インディゴ・テラコッタ・チャコール・ミスト）に、色相を
+     時計回りに広げる新規5色（ハーブ・サンド・サクラ・ダスク・オーシャン）を追加。 */
   const SHARE_THEMES = {
     moss:       { id:'moss',       label:'モス',       bg:'#1B3A2E', ivory:'#EFEAE0', accent:'#E8B547' }, /* 森 */
-    indigo:     { id:'indigo',     label:'インディゴ', bg:'#1F3540', ivory:'#EDE5D0', accent:'#C44A2E' }, /* 海・暖簾 */
+    herb:       { id:'herb',       label:'ハーブ',     bg:'#5C7A4F', ivory:'#F4F0DC', accent:'#C44A2E' }, /* 草・若葉 */
+    sand:       { id:'sand',       label:'サンド',     bg:'#B8956A', ivory:'#FEFAEC', accent:'#3E5C48' }, /* 砂浜 */
+    sakura:     { id:'sakura',     label:'サクラ',     bg:'#C77A6B', ivory:'#FFF1EC', accent:'#3A3A2E' }, /* 桜・春の色 */
     terracotta: { id:'terracotta', label:'テラコッタ', bg:'#6B3A2A', ivory:'#F2EBDC', accent:'#E8B547' }, /* 土 */
     charcoal:   { id:'charcoal',   label:'チャコール', bg:'#2A2622', ivory:'#F2EBDC', accent:'#B5341F' }, /* 墨・活版 */
+    dusk:       { id:'dusk',       label:'ダスク',     bg:'#4A3E5A', ivory:'#F0E8DC', accent:'#E8B547' }, /* 夕暮れ・薄暮 */
+    indigo:     { id:'indigo',     label:'インディゴ', bg:'#1F3540', ivory:'#EDE5D0', accent:'#C44A2E' }, /* 海・暖簾 */
+    ocean:      { id:'ocean',      label:'オーシャン', bg:'#2E5A6B', ivory:'#E8E8DC', accent:'#E8B547' }, /* 深海・蒲郡の海 */
     mist:       { id:'mist',       label:'ミスト',     bg:'#5E7A88', ivory:'#F3EFE4', accent:'#4A5D3A' }  /* 霧・地図 */
   };
-  const SHARE_THEME_ORDER = ['moss','indigo','terracotta','charcoal','mist'];
+  const SHARE_THEME_ORDER = ['moss','herb','sand','sakura','terracotta','charcoal','dusk','indigo','ocean','mist'];
   function getCurrentShareTheme() {
     try {
       const id = localStorage.getItem('mm2026_share_theme');
@@ -974,11 +1029,11 @@
     drawSpaced('VOL.2026  /  MORIMICHI', 80, 150,
       '500 18px ' + FONT.sans, COLOR.ivory, 4);
 
-    /* 3. 表紙タイトル「私の森道。」を中央配置（雑誌の表紙コピー） */
+    /* 3. 表紙タイトル「わたしの森道。」を中央配置（雑誌の表紙コピー） */
     ctx.textAlign = 'center';
     ctx.fillStyle = COLOR.ivory;
     ctx.font = '700 142px ' + FONT.mincho;
-    ctx.fillText('私の森道。', W/2, 320);
+    ctx.fillText('わたしの森道。', W/2, 320);
 
     /* 4. 細い水平線（マスタード、幅50%、中央） */
     ctx.strokeStyle = COLOR.mustard;
@@ -1087,17 +1142,27 @@
     drawShopList2Col(nextYearShops, WISHLIST_HEAD_Y + 70, 10, 50);
     /* リスト終了 y: 1240+70+9*50 = 1760 */
 
-    /* 9. 最下部の発行情報（左寄せ）と #ハッシュタグ（右下） */
+    /* 9. 最下部の発行情報（左寄せ）と #ハッシュタグ（右下）
+       行った日（attendedDays）が1件以上選択されているときのみ、
+       「行った日 ／ 5.22・5.24」を追加行として 1810 に挿入する。
+       0件のときは挿入せず、既存の発行情報のみを表示する（不自然な空白を避ける）。 */
+    const attended = attendedDaysShort();
+    if (attended) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = COLOR.mustard;
+      ctx.font = '500 18px ' + FONT.mincho;
+      ctx.fillText('行った日 ／ ' + attended, 80, 1810);
+    }
     drawSpaced('MORIMICHI ICHIBA  2026', 80, 1840,
       '500 18px ' + FONT.sans, COLOR.mustard, 3);
     ctx.fillStyle = COLOR.ivory;
     ctx.font = '500 20px ' + FONT.mincho;
-    ctx.fillText('5.22 - 24　ラグーナビーチ・蒲郡', 80, 1875);
+    ctx.fillText('ラグーナビーチ・蒲郡', 80, 1875);
     /* ハッシュタグ（右下、accent 色で控えめサイズ） */
     ctx.textAlign = 'right';
     ctx.fillStyle = COLOR.mustard;
     ctx.font = '500 22px ' + FONT.mincho;
-    ctx.fillText('#私の森道', W - 80, 1875);
+    ctx.fillText('#わたしの森道', W - 80, 1875);
 
     return canvas;
   }
@@ -1167,7 +1232,7 @@
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           navigator.share({
             files: [file],
-            title: '2026 年の、私の森道。',
+            title: '2026 年の、わたしの森道。',
             text: '今年の森道、めぐったのは ' + visited + ' 店。来年こそは ' + nextYr + ' 店。\n#森道市場2026 #森道市場'
           }).catch(() => {});
           return;
@@ -1236,25 +1301,28 @@
     drawSpaced('VOL.2026  /  MORIMICHI ARTISTS', 80, 150,
       '500 18px ' + FONT.sans, COLOR.ivory, 4);
 
-    /* 3. 表紙タイトル「観たいアーティスト。」
-       9文字あるため myplan の142pxよりは抑えて、1080幅に収まる100pxを採用。 */
+    /* 3. 表紙タイトル「見たいアーティストからわたしの森道」
+       長い文なので2行構成：上に小さく「見たいアーティストから」、
+       下に大きく「わたしの森道。」を置いて視覚階層を作る。 */
     ctx.textAlign = 'center';
     ctx.fillStyle = COLOR.ivory;
-    ctx.font = '700 100px ' + FONT.mincho;
-    ctx.fillText('観たいアーティスト。', W/2, 320);
+    ctx.font = '500 72px ' + FONT.mincho;
+    ctx.fillText('見たいアーティストから', W/2, 280);
+    ctx.font = '700 142px ' + FONT.mincho;
+    ctx.fillText('わたしの森道。', W/2, 420);
 
     /* 4. 細い水平線（マスタード、幅50%、中央） */
     ctx.strokeStyle = COLOR.mustard;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(W/2 - 240, 390);
-    ctx.lineTo(W/2 + 240, 390);
+    ctx.moveTo(W/2 - 240, 480);
+    ctx.lineTo(W/2 + 240, 480);
     ctx.stroke();
 
     /* 5. 特集タイトル（明朝、雑誌の特集コピー風） */
     ctx.fillStyle = COLOR.ivory;
     ctx.font = '500 62px ' + FONT.mincho;
-    ctx.fillText('観たい ' + n + ' 組。', W/2, 510);
+    ctx.fillText('森道で聞いた ' + n + ' 組。', W/2, 570);
 
     /* 6. 目次見出し（左寄せ、マスタード、等幅小） */
     ctx.textAlign = 'left';
@@ -1326,22 +1394,30 @@
     }
 
     /* 7. LINEUP 2026（観たい）— 2列 10段で最大20件
-       myplan の VISITED と同じ高さに置いて、文字組の体感を共有する。 */
-    const LINEUP_HEAD_Y = 640;
+       タイトルを2行化したため、myplan版（640）より下げて 700 から開始。 */
+    const LINEUP_HEAD_Y = 700;
     drawSectionHead('LINEUP  2026', n, LINEUP_HEAD_Y);
     drawHairUnder(LINEUP_HEAD_Y + 18);
     drawArtistList2Col(favArtists, LINEUP_HEAD_Y + 70, 10, 50);
 
-    /* 8. 最下部の発行情報（左寄せ）と #ハッシュタグ（右下） */
+    /* 8. 最下部の発行情報（左寄せ）と #ハッシュタグ（右下）
+       myplan 側と同じ流儀で「行った日」を1行で挿入する。 */
+    const attended = attendedDaysShort();
+    if (attended) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = COLOR.mustard;
+      ctx.font = '500 18px ' + FONT.mincho;
+      ctx.fillText('行った日 ／ ' + attended, 80, 1810);
+    }
     drawSpaced('MORIMICHI ICHIBA  2026', 80, 1840,
       '500 18px ' + FONT.sans, COLOR.mustard, 3);
     ctx.fillStyle = COLOR.ivory;
     ctx.font = '500 20px ' + FONT.mincho;
-    ctx.fillText('5.22 - 24　ラグーナビーチ・蒲郡', 80, 1875);
+    ctx.fillText('ラグーナビーチ・蒲郡', 80, 1875);
     ctx.textAlign = 'right';
     ctx.fillStyle = COLOR.mustard;
     ctx.font = '500 22px ' + FONT.mincho;
-    ctx.fillText('#私の森道', W - 80, 1875);
+    ctx.fillText('#わたしの森道', W - 80, 1875);
 
     return canvas;
   }
@@ -1583,7 +1659,7 @@
   }
 
   /* ============================================================
-     初回ポップアップ：「私の森道」の使い方
+     初回ポップアップ：「わたしの森道」の使い方
      初めて開く人に1回だけ表示する。 */
   function showThanksPopupIfFirst() {
     let seen = '';
@@ -1592,14 +1668,14 @@
 
     const html =
       '<div class="thanks-popup">' +
-        '<h2 class="thanks-popup__title">私の森道の使い方</h2>' +
+        '<h2 class="thanks-popup__title">わたしの森道の使い方</h2>' +
         '<div class="thanks-popup__body">' +
           '<p>森道2026を「あとから振り返って残す」ための4つの機能を、マイページに追加しました。</p>' +
           '<ul class="thanks-popup__list">' +
             '<li><b>めぐった出店を記録</b>　出店をタップして「行った」を選ぶと、タイルに印が付きます。</li>' +
             '<li><b>来年こそはリスト</b>　気になっていたのに行けなかった店を、来年に持ち越し。</li>' +
             '<li><b>店ごとのメモ</b>　おすすめ・また来たい・写真映え… タグ＋自由メモを500字まで。</li>' +
-            '<li><b>マイプランをシェア</b>　「私の森道」を1枚の画像にして、SNSに残せます。</li>' +
+            '<li><b>マイプランをシェア</b>　「わたしの森道」を1枚の画像にして、SNSに残せます。</li>' +
           '</ul>' +
           '<p>会期中の慌ただしさが落ち着いたら、ぜひ振り返ってみてください。</p>' +
         '</div>' +
@@ -1769,7 +1845,7 @@
     if (sShare) sShare.onclick = () => {
       shareOrCopy({
         title: s.name + ' @森道市場2026',
-        text: '『' + s.name + '』@ ' + shortName(s.zoneName) + ' — 私の森道 2026',
+        text: '『' + s.name + '』@ ' + shortName(s.zoneName) + ' — わたしの森道 2026',
         url: APP_URL + '#shop=' + encodeURIComponent(s.id)
       });
     };

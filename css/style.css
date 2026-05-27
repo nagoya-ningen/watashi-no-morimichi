@@ -1,31 +1,33 @@
 /* ============================================================
-   森、道、市場 2026 ガイドアプリ — スタイル
-   公式サイト準拠：赤#de1815 / 黒#222 / 白 / 黄#ffe000 / 藍#114557
-   フォント：Montserrat + IBM Plex Sans JP
+   わたしの森道 2026 — スタイル
+   コンセプト：「現代和×木漏れ日」
+   公式キーカラー（赤＋黒＋黄）を朱＋古材＋森緑に翻訳。
+   雑誌の余白で語る編集デザイン。
+   フォント：本文 IBM Plex Sans JP / 見出し Noto Serif JP（明朝）
 ============================================================ */
 :root{
-  --red:#de1815;
-  --red-d:#ad1707;
-  --ink:#222222;
-  --paper:#fbf7ef;
-  --card:#ffffff;
-  --yellow:#ffe000;
-  --teal:#114557;
-  --teal-l:#588da9;
-  --sub:#6b6b66;
-  --line:#222222;
-  --ink2:#222222;        /* 白・黄背景上で常に濃色を保つ固定インク */
-  --soft:#e7e1d4;
-  --ok:#1f9d57;
+  --red:#C44C2E;           /* 朱：森道らしさを保ちつつ柔らかく */
+  --red-d:#A03A1F;
+  --ink:#3A3A2E;           /* 墨に少し緑を混ぜた黒。完全な真っ黒は避ける */
+  --paper:#F2EDDC;         /* 生成り。和紙感のある黄味 */
+  --card:#FCF8E9;          /* カードは紙より少し明るく */
+  --yellow:#E8B547;        /* マスタード／山吹 */
+  --teal:#2C4D5A;          /* 深藍 */
+  --teal-l:#5A7D8A;
+  --sub:#7A6A4F;           /* 古材ブラウン。文字の補助色 */
+  --line:#3A3A2E;
+  --ink2:#3A3A2E;          /* 紙背景上で濃色を保つ固定インク */
+  --soft:#E0D5B8;          /* 生成より淡いベージュ。dashed の境界線用 */
+  --ok:#5C7A4F;            /* 草の緑 */
   /* 3軸状態の色を全コンポーネントで共有する変数。
-     タイル・モーダル・チップ・マップピン・動線パネルすべてが
+     タイル・モーダル・チップ・動線パネルすべてが
      ここを参照することで色のメンタルマップを保つ。 */
-  --state-wish:#B5341F;     /* 朱赤：行きたい */
-  --state-visited:#5b8a3a;  /* 緑：行った */
-  --state-next:#2E4A6B;     /* 群青：来年こそは */
+  --state-wish:#C44C2E;     /* 朱赤：行きたい（メインカラーと統一） */
+  --state-visited:#5C7A4F;  /* 草緑：行った */
+  --state-next:#2C4D5A;     /* 深藍：来年こそは */
   --tabh:60px;
   --headh:134px;
-  --hard:3px 3px 0 var(--ink);
+  --hard:2px 2px 0 var(--ink); /* 影は控えめに（手仕事感だが過剰でない） */
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;}
@@ -35,12 +37,12 @@ body{
   -webkit-font-smoothing:antialiased;overscroll-behavior-y:none;
 }
 body.night{
-  --paper:#15171c;--card:#22252d;--ink:#f1ede3;--line:#3a3e48;
-  --sub:#9aa0ac;--soft:#2c2f38;--hard:3px 3px 0 #000;
+  --paper:#1A1B17;--card:#252620;--ink:#F2EDDC;--line:#3A3A2E;
+  --sub:#A89A7D;--soft:#2E2D27;--hard:2px 2px 0 #000;
   /* ダークモード時は彩度をやや上げてコントラスト確保 */
-  --state-wish:#d65240;
-  --state-visited:#7aac5a;
-  --state-next:#5a7da8;
+  --state-wish:#D9624A;
+  --state-visited:#7AA365;
+  --state-next:#4A6E7C;
 }
 img{max-width:100%;display:block;}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
@@ -54,14 +56,17 @@ body.night :focus-visible{outline-color:var(--teal-l);}
 .app-header{
   position:fixed;top:0;left:0;right:0;z-index:50;
   background:var(--red);color:#fff;padding:env(safe-area-inset-top) 0 0;
-  border-bottom:3px solid var(--ink);
+  border-bottom:2.5px solid var(--ink);
 }
 .app-header__top{
   display:flex;align-items:center;justify-content:space-between;
   padding:9px 14px 6px;
 }
-.app-header__title{font-weight:800;font-size:17px;letter-spacing:.02em;
-  display:flex;align-items:center;gap:7px;}
+.app-header__title{
+  font-family:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif;
+  font-weight:700;font-size:17px;letter-spacing:.06em;
+  display:flex;align-items:center;gap:7px;
+}
 .app-header__title .mark{
   background:var(--yellow);color:var(--ink);font-size:10px;font-weight:800;
   padding:2px 6px;border-radius:3px;border:2px solid var(--ink);
@@ -92,7 +97,9 @@ body.night :focus-visible{outline-color:var(--teal-l);}
 .day-tab b{font-family:"Montserrat",sans-serif;font-size:15px;font-weight:800;
   display:block;line-height:1.1;}
 .day-tab span{font-size:10px;letter-spacing:.12em;font-weight:700;}
-.day-tab.active{background:var(--yellow);color:var(--ink2);
+/* 「行った日」を複数選択するトグル状態（緑：var(--state-visited)）。
+   旧 .day-tab.active は単一選択UIの遺物。複数選択UIに変更したため .attended に置換。 */
+.day-tab.attended{background:var(--state-visited);color:#fff;border-color:#1a1a1a;
   box-shadow:3px 3px 0 #222;transform:translate(-1px,-1px);}
 
 /* ---------- 電光掲示板（マーキー） ---------- */

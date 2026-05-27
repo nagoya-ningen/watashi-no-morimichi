@@ -228,20 +228,22 @@ main{
   position:absolute;top:6px;right:8px;font-size:14px;line-height:1;pointer-events:none;
 }
 
-/* タイル下部 3 状態トグルバー */
+/* タイル下部 状態トグルバー（旧3軸→現2軸）
+   タップ領域は最低44pxを確保するため padding を確保。
+   2ボタンになったので font-size とアイコンサイズを上げて見やすく。 */
 .tile__statebar{
-  display:flex;gap:4px;margin-top:auto;
+  display:flex;gap:6px;margin-top:auto;
 }
 .state-btn{
   flex:1 1 0;min-width:0;background:var(--card);
   border:2px solid var(--ink);border-radius:8px;
-  padding:5px 1px 4px;cursor:pointer;transition:.1s;
-  display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1;
-  overflow:hidden;
+  padding:8px 4px;cursor:pointer;transition:.1s;
+  display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1;
+  overflow:hidden;min-height:44px;
 }
 .state-btn:active{transform:translate(1px,1px);box-shadow:0 0 0 var(--ink);}
-.state-btn__ico{font-size:15px;line-height:1;}
-.state-btn__lbl{font-size:9px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;}
+.state-btn__ico{font-size:17px;line-height:1;}
+.state-btn__lbl{font-size:11px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
 /* 状態 on の各ボタン色（マイページのチップ色と統一） */
 .state-btn--fav.on{background:var(--state-wish);color:#fff;border-color:#1a1a1a;}
 .state-btn--visited.on{background:var(--state-visited);color:#fff;border-color:#1a1a1a;}
@@ -498,8 +500,10 @@ body.night .regret-card__sub{color:#c8b9a3;}
   letter-spacing:.01em;
 }
 .myplan-share-cta__sub{
-  font-size:11.5px;color:var(--sub);font-weight:600;
-  line-height:1.6;margin-bottom:14px;
+  /* WCAG AA を満たすため、--sub(#7A6A4F) ではなく --ink を直接使う。
+     --card 背景(#FCF8E9) との対比を 7:1 以上に確保。 */
+  font-size:12px;color:var(--ink);font-weight:600;
+  line-height:1.6;margin-bottom:14px;opacity:.85;
 }
 .myplan-share-cta__btn{
   display:block;width:100%;padding:16px 14px;
@@ -512,16 +516,16 @@ body.night .regret-card__sub{color:#c8b9a3;}
   transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);
 }
 body.night .myplan-share-cta{background:var(--card);}
+body.night .myplan-share-cta__sub{opacity:.9;}
 
 /* 出店モーダル：行きたい廃止に伴い triple→double レイアウトを追加。
-   2ボタンは等幅で並べる（狭い画面でも詰まらないよう padding 抑え目）。 */
+   2ボタンは等幅で並べる。狭い画面（〜425px）ではボタンテキストが
+   詰まるため padding を抑える。 */
 .modal__btns--double{display:flex;gap:9px;}
 .modal__btns--double .btn{padding:13px 8px;font-size:13px;}
-
-/* タイル下部の状態バー：2ボタン用クラス（既存 .tile__statebar の派生）
-   現状は2ボタンでも flex:1 で自動的に等幅になるため、追加スタイル不要。
-   将来的にデザイン差別化したい場合はここに追加する。 */
-.tile__statebar--two{}
+@media (max-width:425px){
+  .modal__btns--double .btn{padding:11px 6px;font-size:12.5px;}
+}
 
 /* ---------- ボトムタブ ---------- */
 /* 共通フッター：非公式表記・制作者クレジット・規約リンクを集約。

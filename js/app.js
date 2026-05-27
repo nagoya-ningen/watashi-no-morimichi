@@ -737,10 +737,8 @@
         appendMyplanSettings(root);
         return;
       }
-      /* 出店側の wishlist サブタブと同じ位置に、画像シェアの導線を置く。 */
-      const shareBtn = el('button', 'plan-map-btn', '観たアーティストをシェア');
-      shareBtn.onclick = () => showArtistImagePreview();
-      root.appendChild(shareBtn);
+      /* 出店側 CTA と統一されたスタイルでアーティスト画像作成を提示。 */
+      appendArtistShareCta(root);
 
       root.appendChild(el('div', 'notice',
         'ℹ️ 出演時間は ' +
@@ -870,6 +868,19 @@
     shareWrap.appendChild(shareBtn);
     root.appendChild(shareWrap);
   }
+  /* 出演者タブの画像作成 CTA：出店側 (appendMyplanShareCta) と同じ
+     スタイル・構造で、文言だけアーティスト向けに差し替える。
+     UI 統一のため、両タブで同じ視覚言語を共有する。 */
+  function appendArtistShareCta(root) {
+    const shareWrap = el('div', 'myplan-share-cta');
+    shareWrap.innerHTML =
+      '<div class="myplan-share-cta__head">📸 観たアーティスト画像を作成</div>' +
+      '<div class="myplan-share-cta__sub">森道で観たアーティストを、1枚の雑誌風カードに。SNSへの共有や保存ができます。</div>';
+    const shareBtn = el('button', 'myplan-share-cta__btn', '観たアーティスト画像を作成');
+    shareBtn.onclick = showArtistImagePreview;
+    shareWrap.appendChild(shareBtn);
+    root.appendChild(shareWrap);
+  }
 
   /* マイプラン最下段の「設定」セクション：エクスポート／インポートのみ。
      画像作成 CTA はトップタブ直下に分離（appendMyplanShareCta）。 */
@@ -897,30 +908,6 @@
     root.appendChild(wrap);
   }
 
-  /* テキストシェア：マイプランの総数を読みやすい一文にまとめてシェア（絵文字なし）。
-     visited / nextYear のどちらも 0 のときは「まだ記録がありません」と案内し、
-     不自然なシェアを防ぐ。 */
-  function shareMyplanText() {
-    const v = state.visited.length;
-    const n = state.nextYear.length;
-    if (v === 0 && n === 0) {
-      toast('「行った」または「来年こそは」を登録してからシェアできます');
-      return;
-    }
-    const lines = [];
-    if (v > 0) lines.push('今年の森道、めぐったのは ' + v + ' 店。');
-    if (n > 0) lines.push('来年こそは ' + n + ' 店。');
-    /* 行った日が選択されていれば併記する。 */
-    const att = attendedDaysText();
-    if (att) lines.push('行った日：' + att);
-    lines.push('');
-    lines.push('#森道市場2026 #森道市場');
-    shareOrCopy({
-      title: '2026 年の、わたしの森道。',
-      text: lines.join('\n'),
-      url: APP_URL
-    });
-  }
 
   /* シェア画像の色テーマ：15色。Magazine B 型構造を保ちつつ、号数違いとして
      色のみを差し替える。アースカラー10色（落ち着いた森道らしさ）に加え、

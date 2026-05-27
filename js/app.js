@@ -716,11 +716,11 @@
     const root = $('#view-myplan');
     root.innerHTML = '';
     const tabs = el('div', 'seg-tabs');
-    /* 出店中心の振り返り体験を優先し、めぐった出店を左・観たい出演者を右に。
+    /* 出店中心の振り返り体験を優先し、めぐった出店を左・観た出演者を右に。
        「めぐった」のカウントは visited + nextYear のユニーク数（行きたい廃止）。 */
     const shopPlanIds = new Set([...state.visited, ...state.nextYear]);
     [['shops', '🛍️ めぐった出店', shopPlanIds.size],
-     ['artists', '⭐ 観たい出演者', state.fav.artists.length]
+     ['artists', '⭐ 観た出演者', state.fav.artists.length]
     ].forEach(t => {
       const b = el('button', t[0] === state.myplanTab ? 'active' : '',
         t[1] + ' (' + t[2] + ')');
@@ -733,12 +733,12 @@
       const favs = ARTISTS.filter(a => isFav('artists', a.id));
       if (!favs.length) {
         root.appendChild(el('div', 'empty',
-          '<div class="big">⭐</div>観たい出演者を登録すると<br>ここに一覧表示されます'));
+          '<div class="big">⭐</div>観た出演者を登録すると<br>ここに一覧表示されます'));
         appendMyplanSettings(root);
         return;
       }
       /* 出店側の wishlist サブタブと同じ位置に、画像シェアの導線を置く。 */
-      const shareBtn = el('button', 'plan-map-btn', '観たいアーティストをシェア');
+      const shareBtn = el('button', 'plan-map-btn', '観たアーティストをシェア');
       shareBtn.onclick = () => showArtistImagePreview();
       root.appendChild(shareBtn);
 
@@ -1232,7 +1232,7 @@
     showMyplanImagePreview();
   }
 
-  /* 観たいアーティスト一覧の画像（1080x1920）を生成する。
+  /* 観たアーティスト一覧の画像（1080x1920）を生成する。
      generateMyplanCanvas と同じ Magazine B / Casa BRUTUS 系のトーンを共有。
      出店側と違い「来年」の概念がないため、LINEUP 1セクション構成。 */
   function generateArtistCanvas(themeId) {
@@ -1254,7 +1254,7 @@
       mono:   '"SF Mono", "Menlo", "Courier New", monospace'
     };
 
-    /* 観たいアーティスト一覧。state.fav.artists の id 順ではなく
+    /* 観たアーティスト一覧。state.fav.artists の id 順ではなく
        ARTISTS の元順を尊重して安定した並びを保つ。 */
     const favArtists = ARTISTS.filter(a => isFav('artists', a.id));
     const n = favArtists.length;
@@ -1370,7 +1370,7 @@
       }
     }
 
-    /* 7. LINEUP 2026（観たい）— 2列 10段で最大20件
+    /* 7. LINEUP 2026（観た）— 2列 10段で最大20件
        myplan版の VISITED と同じ高さに揃え、文字組の体感を共有する。 */
     const LINEUP_HEAD_Y = 640;
     drawSectionHead('LINEUP  2026', n, LINEUP_HEAD_Y);
@@ -1399,11 +1399,11 @@
     return canvas;
   }
 
-  /* 観たいアーティスト画像のプレビューモーダル。
+  /* 観たアーティスト画像のプレビューモーダル。
      showMyplanImagePreview と同じ構造で、テーマ切替・シェア／保存に対応。 */
   function showArtistImagePreview() {
     if (state.fav.artists.length === 0) {
-      toast('観たいアーティストを登録してから画像を書き出せます');
+      toast('観たアーティストを登録してから画像を書き出せます');
       return;
     }
     let currentTheme = getCurrentShareTheme();
@@ -1427,7 +1427,7 @@
       '<div class="modal__handle"></div>' +
       '<p class="image-preview__title">プレビュー</p>' +
       '<div class="image-preview">' +
-        '<img src="' + dataUrl0 + '" alt="観たいアーティスト プレビュー" class="image-preview__img" id="ipImg">' +
+        '<img src="' + dataUrl0 + '" alt="観たアーティスト プレビュー" class="image-preview__img" id="ipImg">' +
       '</div>' +
       '<p class="image-preview__themehead">色を選ぶ</p>' +
       '<div class="theme-chips" id="ipThemes">' + swatchHtml + '</div>' +
@@ -1459,8 +1459,8 @@
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           navigator.share({
             files: [file],
-            title: '2026 年、観たいアーティスト。',
-            text: '観たいのは ' + n + ' 組。\n#森道市場2026 #森道市場'
+            title: '2026 年、観たアーティスト。',
+            text: '観たのは ' + n + ' 組。\n#森道市場2026 #森道市場'
           }).catch(() => {});
           return;
         }
@@ -1474,7 +1474,7 @@
     };
   }
 
-  /* 観たいアーティスト画像書き出しのエントリポイント */
+  /* 観たアーティスト画像書き出しのエントリポイント */
   function exportArtistImage() {
     showArtistImagePreview();
   }

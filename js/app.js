@@ -1301,28 +1301,25 @@
     drawSpaced('VOL.2026  /  MORIMICHI ARTISTS', 80, 150,
       '500 18px ' + FONT.sans, COLOR.ivory, 4);
 
-    /* 3. 表紙タイトル「見たいアーティストからわたしの森道」
-       長い文なので2行構成：上に小さく「見たいアーティストから」、
-       下に大きく「わたしの森道。」を置いて視覚階層を作る。 */
+    /* 3. 表紙タイトル「わたしの森道。」
+       myplan版（出店用）と同じ位置に揃え、雑誌の表紙コピーとして配置する。 */
     ctx.textAlign = 'center';
     ctx.fillStyle = COLOR.ivory;
-    ctx.font = '500 72px ' + FONT.mincho;
-    ctx.fillText('見たいアーティストから', W/2, 280);
     ctx.font = '700 142px ' + FONT.mincho;
-    ctx.fillText('わたしの森道。', W/2, 420);
+    ctx.fillText('わたしの森道。', W/2, 320);
 
     /* 4. 細い水平線（マスタード、幅50%、中央） */
     ctx.strokeStyle = COLOR.mustard;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(W/2 - 240, 480);
-    ctx.lineTo(W/2 + 240, 480);
+    ctx.moveTo(W/2 - 240, 390);
+    ctx.lineTo(W/2 + 240, 390);
     ctx.stroke();
 
     /* 5. 特集タイトル（明朝、雑誌の特集コピー風） */
     ctx.fillStyle = COLOR.ivory;
     ctx.font = '500 62px ' + FONT.mincho;
-    ctx.fillText('森道で聞いた ' + n + ' 組。', W/2, 570);
+    ctx.fillText('森道で聞いた ' + n + ' 組。', W/2, 510);
 
     /* 6. 目次見出し（左寄せ、マスタード、等幅小） */
     ctx.textAlign = 'left';
@@ -1394,8 +1391,8 @@
     }
 
     /* 7. LINEUP 2026（観たい）— 2列 10段で最大20件
-       タイトルを2行化したため、myplan版（640）より下げて 700 から開始。 */
-    const LINEUP_HEAD_Y = 700;
+       myplan版の VISITED と同じ高さに揃え、文字組の体感を共有する。 */
+    const LINEUP_HEAD_Y = 640;
     drawSectionHead('LINEUP  2026', n, LINEUP_HEAD_Y);
     drawHairUnder(LINEUP_HEAD_Y + 18);
     drawArtistList2Col(favArtists, LINEUP_HEAD_Y + 70, 10, 50);

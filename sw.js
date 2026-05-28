@@ -1,7 +1,7 @@
 /* わたしの森道 — Service Worker
    コード（html/css/js）はネットワーク優先＝常に最新を表示。
    画像はキャッシュ優先＝オフラインでも高速表示。 */
-const CACHE = 'watashi-no-morimichi-v1';
+const CACHE = 'watashi-no-morimichi-v2';
 
 /* 起動に最低限必要なファイル（軽量）。1つでも失敗すると addAll は全体が
    失敗するため、個別に add し、失敗してもインストールを止めない。 */
@@ -13,7 +13,8 @@ const CORE = [
   './js/data.js',
   './js/app.js',
   './img/icon-192.png',
-  './img/icon-512.png'
+  './img/icon-512.png',
+  './img/og-image.png'
 ];
 /* 追加先読みファイルなし（マップ・タイムテーブル画像は不要） */
 const EXTRA = [];

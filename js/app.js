@@ -1134,20 +1134,67 @@
     return canvas;
   }
 
-  /* プレビューモーダル：書き出し前に画像を確認、5色テーマから選んでシェア／保存。
-     iOS では img の長押しでカメラロール保存も可能。
-     データが空の場合は案内のみ。 */
-  function showMyplanImagePreview() {
-    if (state.visited.length === 0 && state.nextYear.length === 0) {
-      toast('「行った」または「来年こそは」を登録してからシェアできます');
+  /* 統合プレビューモーダル：3種類（出店+来年 / アーティスト / 合成版）から
+     選択 → テーマ選択 → シェア／保存。
+     initialType は最初に表示する種類を指定（'shops'|'artists'|'both'）。
+     データが空の種類は無効化（タブグレーアウト）、初期種類が空の場合は
+     使える種類にフォールバックする。 */
+  function showImagePreview(initialType) {
+    const TYPES = {
+      shops: {
+        label: '出店 + 来年',
+        generate: generateMyplanCanvas,
+        canShare: () => state.visited.length > 0 || state.nextYear.length > 0,
+        filename: 'watashi-no-morimichi-shops.png',
+        title: '2026 年の、わたしの森道。',
+        text: () => '今年の森道、めぐったのは ' + state.visited.length +
+          ' 店。来年こそは ' + state.nextYear.length + ' 店。\n#森道市場2026 #森道市場'
+      },
+      artists: {
+        label: 'アーティスト',
+        generate: generateArtistCanvas,
+        canShare: () => state.fav.artists.length > 0,
+        filename: 'watashi-no-morimichi-artists.png',
+        title: '2026 年、観たアーティスト。',
+        text: () => '観たのは ' + state.fav.artists.length + ' 組。\n#森道市場2026 #森道市場'
+      },
+      both: {
+        label: 'ぜんぶ',
+        generate: generateBothCanvas,
+        canShare: () => state.visited.length > 0 || state.fav.artists.length > 0,
+        filename: 'watashi-no-morimichi-mixed.png',
+        title: '2026 年の、わたしの森道。',
+        text: () => '森道、めぐった ' + state.visited.length + ' 店 ／ 観た ' +
+          state.fav.artists.length + ' 組。\n#森道市場2026 #森道市場'
+      }
+    };
+    /* どの種類にもデータが無ければ案内のみで終了 */
+    const anyHasData = Object.keys(TYPES).some(k => TYPES[k].canShare());
+    if (!anyHasData) {
+      toast('「行った」「来年こそは」「観た」のいずれかを登録してから画像を作成できます');
       return;
     }
-    /* 現在の canvas を変数として保持（テーマ切替時に置き換える） */
+    /* 初期種類が無効なら使える種類にフォールバック */
+    let currentType = (initialType && TYPES[initialType] && TYPES[initialType].canShare())
+      ? initialType
+      : Object.keys(TYPES).find(k => TYPES[k].canShare());
+
     let currentTheme = getCurrentShareTheme();
-    let currentCanvas = generateMyplanCanvas(currentTheme.id);
+    let currentCanvas = TYPES[currentType].generate(currentTheme.id);
     const dataUrl0 = currentCanvas.toDataURL('image/png');
 
-    /* テーマ選択チップを構築（各チップに背景色のスウォッチを表示） */
+    /* 種類選択タブ（3つ）。データのない種類はグレーアウト表示。 */
+    const typeTabsHtml = ['shops','artists','both'].map(id => {
+      const t = TYPES[id];
+      const cls = 'image-type-tab' +
+        (id === currentType ? ' is-active' : '') +
+        (t.canShare() ? '' : ' is-disabled');
+      const attr = t.canShare() ? '' : ' aria-disabled="true"';
+      return '<button class="' + cls + '" data-type="' + id + '"' + attr + '>' +
+        esc(t.label) + '</button>';
+    }).join('');
+
+    /* テーマ選択チップ（15色） */
     const swatchHtml = SHARE_THEME_ORDER.map(id => {
       const th = SHARE_THEMES[id];
       const active = id === currentTheme.id ? ' is-active' : '';
@@ -1164,8 +1211,10 @@
     openModal(
       '<div class="modal__handle"></div>' +
       '<p class="image-preview__title">プレビュー</p>' +
+      '<p class="image-preview__themehead">種類を選ぶ</p>' +
+      '<div class="image-type-tabs" id="ipTypes">' + typeTabsHtml + '</div>' +
       '<div class="image-preview">' +
-        '<img src="' + dataUrl0 + '" alt="マイプラン プレビュー" class="image-preview__img" id="ipImg">' +
+        '<img src="' + dataUrl0 + '" alt="プレビュー" class="image-preview__img" id="ipImg">' +
       '</div>' +
       '<p class="image-preview__themehead">色を選ぶ</p>' +
       '<div class="theme-chips" id="ipThemes">' + swatchHtml + '</div>' +
@@ -1175,38 +1224,46 @@
       '</div>'
     );
 
-    const visited = state.visited.length;
-    const nextYr  = state.nextYear.length;
-
-    /* テーマチップのクリックで canvas を再生成、img を差し替え、保存テーマを更新 */
+    /* 種類タブの再描画：canvas を再生成して img を差し替える */
+    function rerenderCanvas() {
+      currentCanvas = TYPES[currentType].generate(currentTheme.id);
+      const img = $('#ipImg');
+      if (img) img.src = currentCanvas.toDataURL('image/png');
+    }
+    $$('#ipTypes .image-type-tab').forEach(tab => {
+      tab.onclick = () => {
+        if (tab.classList.contains('is-disabled')) return;
+        const id = tab.getAttribute('data-type');
+        if (!TYPES[id]) return;
+        currentType = id;
+        $$('#ipTypes .image-type-tab').forEach(t => t.classList.toggle('is-active', t === tab));
+        rerenderCanvas();
+      };
+    });
+    /* テーマチップのクリックで canvas を再生成、保存テーマを更新 */
     $$('#ipThemes .theme-chip').forEach(chip => {
       chip.onclick = () => {
         const id = chip.getAttribute('data-theme');
         if (!SHARE_THEMES[id]) return;
         currentTheme = SHARE_THEMES[id];
-        currentCanvas = generateMyplanCanvas(id);
-        const img = $('#ipImg');
-        if (img) img.src = currentCanvas.toDataURL('image/png');
         $$('#ipThemes .theme-chip').forEach(c => c.classList.toggle('is-active', c === chip));
         try { localStorage.setItem('mm2026_share_theme', id); } catch (e) {}
+        rerenderCanvas();
       };
     });
-
+    /* シェア／保存：Web Share API → ダウンロードのフォールバック */
     $('#ipShare').onclick = () => {
+      const T = TYPES[currentType];
       currentCanvas.toBlob((blob) => {
         if (!blob) { toast('画像の生成に失敗しました'); return; }
-        const file = new File([blob], 'watashi-no-morimichi-2026.png', { type: 'image/png' });
+        const file = new File([blob], T.filename, { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({
-            files: [file],
-            title: '2026 年の、わたしの森道。',
-            text: '今年の森道、めぐったのは ' + visited + ' 店。来年こそは ' + nextYr + ' 店。\n#森道市場2026 #森道市場'
-          }).catch(() => {});
+          navigator.share({ files: [file], title: T.title, text: T.text() }).catch(() => {});
           return;
         }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'watashi-no-morimichi-2026.png';
+        a.href = url; a.download = T.filename;
         document.body.appendChild(a); a.click();
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
         toast('画像をダウンロードしました');
@@ -1214,10 +1271,12 @@
     };
   }
 
-  /* マイページ「画像で書き出す」ボタンから呼ぶエントリポイント */
+  /* マイプラン CTA から呼ぶエントリポイント（出店タブ起点） */
   function exportMyplanImage() {
-    showMyplanImagePreview();
+    showImagePreview('shops');
   }
+  /* 旧名互換：将来削除予定 */
+  function showMyplanImagePreview() { showImagePreview('shops'); }
 
   /* 観たアーティスト一覧の画像（1080x1920）を生成する。
      generateMyplanCanvas と同じ Magazine B / Casa BRUTUS 系のトーンを共有。
@@ -1386,84 +1445,154 @@
     return canvas;
   }
 
-  /* 観たアーティスト画像のプレビューモーダル。
-     showMyplanImagePreview と同じ構造で、テーマ切替・シェア／保存に対応。 */
-  function showArtistImagePreview() {
-    if (state.fav.artists.length === 0) {
-      toast('観たアーティストを登録してから画像を書き出せます');
-      return;
-    }
-    let currentTheme = getCurrentShareTheme();
-    let currentCanvas = generateArtistCanvas(currentTheme.id);
-    const dataUrl0 = currentCanvas.toDataURL('image/png');
+  /* アーティスト CTA から呼ぶエントリポイント。統合プレビューで初期種類は
+     'artists'。データがなければ別種類にフォールバックされる。 */
+  function showArtistImagePreview() { showImagePreview('artists'); }
+  function exportArtistImage() { showImagePreview('artists'); }
 
-    const swatchHtml = SHARE_THEME_ORDER.map(id => {
-      const th = SHARE_THEMES[id];
-      const active = id === currentTheme.id ? ' is-active' : '';
-      return '<button class="theme-chip' + active + '" data-theme="' + id +
-        '" aria-label="' + esc(th.label) + '">' +
-        '<span class="theme-chip__sw" style="background:' + th.bg +
-          ';color:' + th.ivory + ';border-color:' + th.ivory + '">' +
-          '<span class="theme-chip__dot" style="background:' + th.accent + '"></span>' +
-        '</span>' +
-        '<span class="theme-chip__lbl">' + esc(th.label) + '</span>' +
-      '</button>';
-    }).join('');
-
-    openModal(
-      '<div class="modal__handle"></div>' +
-      '<p class="image-preview__title">プレビュー</p>' +
-      '<div class="image-preview">' +
-        '<img src="' + dataUrl0 + '" alt="観たアーティスト プレビュー" class="image-preview__img" id="ipImg">' +
-      '</div>' +
-      '<p class="image-preview__themehead">色を選ぶ</p>' +
-      '<div class="theme-chips" id="ipThemes">' + swatchHtml + '</div>' +
-      '<p class="image-preview__hint">画像を長押し（スマホ）でカメラロールに保存できます。下のボタンからもシェア／保存できます。</p>' +
-      '<div class="modal__btns">' +
-        '<button class="btn btn--primary" id="ipShare">シェア／保存する</button>' +
-      '</div>'
-    );
-
-    const n = state.fav.artists.length;
-
-    $$('#ipThemes .theme-chip').forEach(chip => {
-      chip.onclick = () => {
-        const id = chip.getAttribute('data-theme');
-        if (!SHARE_THEMES[id]) return;
-        currentTheme = SHARE_THEMES[id];
-        currentCanvas = generateArtistCanvas(id);
-        const img = $('#ipImg');
-        if (img) img.src = currentCanvas.toDataURL('image/png');
-        $$('#ipThemes .theme-chip').forEach(c => c.classList.toggle('is-active', c === chip));
-        try { localStorage.setItem('mm2026_share_theme', id); } catch (e) {}
-      };
-    });
-
-    $('#ipShare').onclick = () => {
-      currentCanvas.toBlob((blob) => {
-        if (!blob) { toast('画像の生成に失敗しました'); return; }
-        const file = new File([blob], 'morimichi2026-artists.png', { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({
-            files: [file],
-            title: '2026 年、観たアーティスト。',
-            text: '観たのは ' + n + ' 組。\n#森道市場2026 #森道市場'
-          }).catch(() => {});
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'morimichi2026-artists.png';
-        document.body.appendChild(a); a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-        toast('画像をダウンロードしました');
-      }, 'image/png');
+  /* 行ったお店 ＋ 観たアーティストの合成版 canvas（1080x1920）。
+     2セクション縦並びのため、各リストは最大16件（2列×8段）に絞り、
+     上下に対称的な視覚バランスをつくる。
+     generateMyplanCanvas / generateArtistCanvas と同じ Magazine B 系のトーン共有。 */
+  function generateBothCanvas(themeId) {
+    const W = 1080, H = 1920;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    const theme = (themeId && SHARE_THEMES[themeId]) || getCurrentShareTheme();
+    const COLOR = { bg: theme.bg, ivory: theme.ivory, mustard: theme.accent };
+    const FONT = {
+      mincho: '"Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif',
+      sans:   '"Helvetica Neue", -apple-system, "Hiragino Sans", sans-serif',
+      mono:   '"SF Mono", "Menlo", "Courier New", monospace'
     };
-  }
+    const visited = state.visited.length;
+    const artistN = state.fav.artists.length;
+    const visitedShops = SHOPS.filter(s => isVisited(s.id));
+    const favArtists = ARTISTS.filter(a => isFav('artists', a.id))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
-  /* 観たアーティスト画像書き出しのエントリポイント */
-  function exportArtistImage() {
-    showArtistImagePreview();
+    ctx.fillStyle = COLOR.bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = 'alphabetic';
+    function drawSpaced(text, x, y, fontSpec, color, gap) {
+      ctx.save(); ctx.fillStyle = color; ctx.font = fontSpec;
+      let cx = x;
+      for (let i = 0; i < text.length; i++) {
+        ctx.fillText(text[i], cx, y);
+        cx += ctx.measureText(text[i]).width + gap;
+      }
+      ctx.restore();
+    }
+    /* 1. 上部の極小ヴォリューム表記 */
+    ctx.textAlign = 'left'; ctx.fillStyle = COLOR.ivory;
+    drawSpaced('VOL.2026  /  MORIMICHI', 80, 150,
+      '500 18px ' + FONT.sans, COLOR.ivory, 4);
+    /* 2. 表紙タイトル */
+    ctx.textAlign = 'center'; ctx.fillStyle = COLOR.ivory;
+    ctx.font = '700 142px ' + FONT.mincho;
+    ctx.fillText('わたしの森道。', W/2, 320);
+    /* 3. 細い水平線 */
+    ctx.strokeStyle = COLOR.mustard; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(W/2 - 240, 390); ctx.lineTo(W/2 + 240, 390); ctx.stroke();
+    /* 4. 特集タイトル */
+    ctx.fillStyle = COLOR.ivory; ctx.font = '500 62px ' + FONT.mincho;
+    let featureLine;
+    if (visited > 0 && artistN > 0) {
+      featureLine = 'めぐった ' + visited + ' 店、観た ' + artistN + ' 組。';
+    } else if (visited > 0) {
+      featureLine = 'めぐった、' + visited + ' 店。';
+    } else {
+      featureLine = '観た、' + artistN + ' 組。';
+    }
+    ctx.fillText(featureLine, W/2, 510);
+    /* 5. セクション見出し共通ヘルパ */
+    ctx.textAlign = 'left';
+    function drawSectionHead(label, count, y) {
+      drawSpaced(label, 80, y, '500 18px ' + FONT.mono, COLOR.mustard, 2);
+      ctx.textAlign = 'right'; ctx.fillStyle = COLOR.mustard;
+      ctx.font = '500 18px ' + FONT.mono;
+      ctx.fillText('— ' + count, W - 80, y);
+      ctx.textAlign = 'left';
+    }
+    function drawHairUnder(y) {
+      ctx.strokeStyle = COLOR.mustard; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(80, y); ctx.lineTo(W - 80, y); ctx.stroke();
+    }
+    function trimByWidth(text, maxWidth) {
+      if (ctx.measureText(text).width <= maxWidth) return text;
+      let s = text;
+      while (s.length > 0) {
+        s = s.slice(0, -1);
+        if (ctx.measureText(s + '…').width <= maxWidth) return s + '…';
+      }
+      return '…';
+    }
+    /* 2列リスト描画（合成版は1セクション8段=16件まで） */
+    function drawList2Col(items, startY, maxPerCol, lineH) {
+      ctx.textAlign = 'left';
+      const cap = maxPerCol * 2;
+      const willOverflow = items.length > cap;
+      const showCount = willOverflow ? cap - 1 : Math.min(items.length, cap);
+      const colX  = [80, 580];
+      const nameX = [134, 634];
+      const COL_END = [560, 1060];
+      const maxNameW = [COL_END[0] - nameX[0] - 6, COL_END[1] - nameX[1] - 6];
+      for (let i = 0; i < showCount; i++) {
+        const col = Math.floor(i / maxPerCol);
+        const row = i % maxPerCol;
+        const y = startY + row * lineH;
+        const num = String(i + 1).padStart(2, '0');
+        ctx.fillStyle = COLOR.mustard;
+        ctx.font = '500 24px ' + FONT.mono;
+        ctx.fillText(num, colX[col], y);
+        ctx.fillStyle = COLOR.ivory;
+        ctx.font = '500 30px ' + FONT.mincho;
+        const name = trimByWidth(items[i].name, maxNameW[col]);
+        ctx.fillText(name, nameX[col], y);
+      }
+      if (willOverflow) {
+        const rest = items.length - showCount;
+        const col = Math.floor(showCount / maxPerCol);
+        const row = showCount % maxPerCol;
+        ctx.fillStyle = COLOR.ivory; ctx.font = '300 24px ' + FONT.mincho;
+        ctx.fillText('& ' + rest + ' more', nameX[col], startY + row * lineH);
+      }
+      if (items.length === 0) {
+        ctx.fillStyle = COLOR.ivory; ctx.globalAlpha = 0.5;
+        ctx.font = '300 24px ' + FONT.mincho;
+        ctx.fillText('—  まだ記録がありません', 80, startY);
+        ctx.globalAlpha = 1;
+      }
+    }
+    /* 6. VISITED 2026（行ったお店）— 2列8段 最大16件
+       合成版は1ページに2セクション収めるため myplan版より段数を抑える。 */
+    const VISITED_HEAD_Y = 640;
+    drawSectionHead('VISITED  2026', visited, VISITED_HEAD_Y);
+    drawHairUnder(VISITED_HEAD_Y + 18);
+    drawList2Col(visitedShops, VISITED_HEAD_Y + 70, 8, 50);
+    /* リスト終了 y: 640+70+7*50 = 1060 */
+    /* 7. LINEUP 2026（観たアーティスト）— 2列8段 最大16件 */
+    const LINEUP_HEAD_Y = 1190;
+    drawSectionHead('LINEUP  2026', artistN, LINEUP_HEAD_Y);
+    drawHairUnder(LINEUP_HEAD_Y + 18);
+    drawList2Col(favArtists, LINEUP_HEAD_Y + 70, 8, 50);
+    /* リスト終了 y: 1190+70+7*50 = 1610 */
+    /* 8. 最下部：行った日 + 発行情報 + ハッシュタグ */
+    const attended = attendedDaysShort();
+    if (attended) {
+      ctx.textAlign = 'left'; ctx.fillStyle = COLOR.mustard;
+      ctx.font = '500 18px ' + FONT.mincho;
+      ctx.fillText(attended, 80, 1810);
+    }
+    drawSpaced('MORIMICHI ICHIBA  2026', 80, 1840,
+      '500 18px ' + FONT.sans, COLOR.mustard, 3);
+    ctx.fillStyle = COLOR.ivory; ctx.font = '500 20px ' + FONT.mincho;
+    ctx.fillText('ラグーナビーチ・蒲郡', 80, 1875);
+    ctx.textAlign = 'right'; ctx.fillStyle = COLOR.mustard;
+    ctx.font = '500 22px ' + FONT.mincho;
+    ctx.fillText('#わたしの森道', W - 80, 1875);
+    return canvas;
   }
 
   /* 角丸矩形ヘルパ（Canvas） */

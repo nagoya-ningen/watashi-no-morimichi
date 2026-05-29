@@ -450,6 +450,27 @@ body.night .regret-card__sub{color:#c8b9a3;}
   margin:0 4px 10px;
 }
 
+/* プレビューモーダル：画像種類選択タブ（3つ） */
+.image-type-tabs{
+  display:flex;gap:6px;margin:0 0 12px;
+}
+.image-type-tab{
+  flex:1 1 0;min-width:0;padding:10px 6px;
+  background:var(--card);color:var(--ink);
+  border:2px solid var(--ink);border-radius:9px;
+  font-size:11.5px;font-weight:800;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:1px 1px 0 var(--ink);transition:.1s;cursor:pointer;
+}
+.image-type-tab:active{transform:translate(1px,1px);box-shadow:0 0 0 var(--ink);}
+.image-type-tab.is-active{
+  background:var(--red);color:#fff;border-color:var(--ink);
+}
+.image-type-tab.is-disabled{
+  opacity:.4;cursor:not-allowed;
+}
+.image-type-tab.is-disabled:active{transform:none;box-shadow:1px 1px 0 var(--ink);}
+
 /* プレビューモーダル：色テーマ選択チップ群 */
 .image-preview__themehead{
   font-size:12px;font-weight:800;letter-spacing:.04em;color:var(--ink);

@@ -906,6 +906,63 @@
     fileInput.onchange = (e) => importMyplan(e.target.files && e.target.files[0]);
     wrap.appendChild(fileInput);
     root.appendChild(wrap);
+
+    /* リセットセクション：行った・来年・観たアーティストの選択を全削除する。
+       破壊的操作なので確認モーダルを必ず挟む。
+       メモ・行った日・テーマ設定は別概念なので保持する。 */
+    const resetWrap = el('div', 'myplan-reset');
+    resetWrap.innerHTML =
+      '<div class="myplan-reset__head">⚠️ 選択をリセット</div>' +
+      '<div class="myplan-reset__sub">行った出店・来年こそはの出店・観たアーティストの選択を、すべて削除します。メモ・行った日・色テーマは残ります。</div>';
+    const resetBtn = el('button', 'myplan-reset__btn', 'すべての選択をリセット');
+    resetBtn.onclick = showResetConfirm;
+    resetWrap.appendChild(resetBtn);
+    root.appendChild(resetWrap);
+  }
+
+  /* リセット確認モーダル：はい／いいえの2択。
+     0件のときは toast で案内して開かない（不要なモーダルを避ける）。 */
+  function showResetConfirm() {
+    const v = state.visited.length;
+    const n = state.nextYear.length;
+    const a = state.fav.artists.length;
+    if (v + n + a === 0) {
+      toast('リセットする選択がありません');
+      return;
+    }
+    openModal(
+      '<div class="modal__handle"></div>' +
+      '<div class="reset-confirm">' +
+        '<div class="reset-confirm__icon">⚠️</div>' +
+        '<div class="reset-confirm__title">本当にリセットしますか？</div>' +
+        '<div class="reset-confirm__body">以下の選択がすべて削除されます。この操作は取り消せません。</div>' +
+        '<ul class="reset-confirm__list">' +
+          '<li>行った出店：<b>' + v + '</b> 店</li>' +
+          '<li>来年こそは：<b>' + n + '</b> 店</li>' +
+          '<li>観たアーティスト：<b>' + a + '</b> 組</li>' +
+        '</ul>' +
+        '<div class="reset-confirm__note">※ メモ・行った日・色テーマ・ダークモード設定は残ります。</div>' +
+      '</div>' +
+      '<div class="modal__btns modal__btns--double">' +
+        '<button class="btn btn--ghost" id="resetCancel">いいえ</button>' +
+        '<button class="btn btn--danger" id="resetConfirm">はい、リセット</button>' +
+      '</div>'
+    );
+    $('#resetCancel').onclick = () => closeModal();
+    $('#resetConfirm').onclick = () => {
+      state.visited = [];
+      state.nextYear = [];
+      state.fav.artists = [];
+      saveVisited();
+      saveNextYear();
+      saveFav();
+      closeModal();
+      toast('選択をリセットしました');
+      renderMyplan();
+      updateTabBadge();
+      if (state.view === 'shops') renderShopList();
+      if (state.view === 'artists') renderArtistList();
+    };
   }
 
 

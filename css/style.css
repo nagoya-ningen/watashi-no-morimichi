@@ -509,6 +509,51 @@ body.night .regret-card__sub{color:#c8b9a3;}
 .myplan-settings__sub{font-size:11px;color:var(--sub);font-weight:600;line-height:1.55;margin-bottom:10px;}
 .myplan-settings__btns{display:flex;gap:9px;}
 
+/* マイプラン：リセットセクション（破壊的操作）
+   ダッシュ枠を朱色にして注意喚起。背景は淡い朱で危険性を示す。 */
+.myplan-reset{
+  margin-top:18px;padding:14px;
+  border:2px dashed var(--red);border-radius:10px;
+  background:rgba(196,76,46,.06);
+}
+body.night .myplan-reset{background:rgba(217,98,74,.1);}
+.myplan-reset__head{font-size:13px;font-weight:800;color:var(--red-d);margin-bottom:4px;}
+.myplan-reset__sub{font-size:11px;color:var(--ink);font-weight:600;line-height:1.55;margin-bottom:10px;opacity:.85;}
+.myplan-reset__btn{
+  display:block;width:100%;padding:12px;
+  background:#fff;color:var(--red-d);
+  border:2px solid var(--red-d);border-radius:9px;
+  font-size:13px;font-weight:800;letter-spacing:.01em;
+  box-shadow:1px 1px 0 var(--red-d);cursor:pointer;transition:.1s;
+}
+.myplan-reset__btn:active{transform:translate(1px,1px);box-shadow:0 0 0 var(--red-d);}
+body.night .myplan-reset__btn{background:transparent;color:#F2EDDC;border-color:#D9624A;box-shadow:1px 1px 0 #D9624A;}
+
+/* リセット確認モーダル */
+.reset-confirm{padding:12px 4px 4px;text-align:center;}
+.reset-confirm__icon{font-size:40px;line-height:1;margin-bottom:8px;}
+.reset-confirm__title{font-size:17px;font-weight:800;color:var(--ink);margin-bottom:8px;}
+.reset-confirm__body{font-size:13px;color:var(--ink);line-height:1.6;margin-bottom:14px;opacity:.85;}
+.reset-confirm__list{
+  list-style:none;padding:14px 18px;margin:0 0 12px;
+  background:rgba(196,76,46,.06);border:2px solid var(--red);border-radius:10px;
+  text-align:left;
+}
+.reset-confirm__list li{
+  font-size:13px;color:var(--ink);line-height:2;font-weight:600;
+  display:flex;justify-content:space-between;
+}
+.reset-confirm__list li b{
+  font-family:"Montserrat",sans-serif;font-weight:800;color:var(--red-d);font-size:15px;
+}
+body.night .reset-confirm__list{background:rgba(217,98,74,.1);}
+body.night .reset-confirm__list li b{color:#E8694A;}
+.reset-confirm__note{font-size:11px;color:var(--sub);line-height:1.55;margin-bottom:14px;}
+
+/* 危険操作の確認ボタン（破壊的アクション色） */
+.btn--danger{background:var(--red);color:#fff;}
+.btn--danger:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+
 /* マイプラン：画像作成CTA（視認性を最大化した1ボタン構成）
    2ボタン（画像で書き出す / テキストでシェア）から1ボタンに集約。
    塗りつぶしの朱色ボタン＋見出し＋補足の縦組みで CTA を明確にする。 */

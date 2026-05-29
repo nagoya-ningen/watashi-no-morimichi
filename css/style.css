@@ -458,6 +458,14 @@ body.night .chips--sub .chip.active{color:#fff;}
   display:flex;gap:8px;margin:0 0 12px;overflow-x:auto;
   padding-bottom:4px;-webkit-overflow-scrolling:touch;
 }
+/* ひとこと入力欄：表紙に焼き込む任意テキスト。フォーム要素の既存トーンに合わせる。 */
+.image-oneliner{margin:0 0 12px;}
+.image-oneliner__input{
+  width:100%;border:2.5px solid var(--ink);border-radius:9px;
+  padding:11px 12px;font-size:16px;background:var(--card);color:var(--ink);
+  box-shadow:var(--hard);-webkit-appearance:none;appearance:none;box-sizing:border-box;
+}
+.image-oneliner__input:focus-visible{outline:3px solid var(--teal);outline-offset:2px;}
 .theme-chip{
   flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;
   padding:4px 2px;border:none;background:transparent;cursor:pointer;
@@ -621,6 +629,30 @@ body.night .install-cta{background:rgba(90,125,138,.14);}
 .myplan-summary__item b{font-size:20px;font-weight:800;color:var(--red-d);line-height:1.1;}
 .myplan-summary__lbl{font-size:9.5px;font-weight:700;color:var(--sub);letter-spacing:.02em;}
 body.night .myplan-summary__item b{color:#E8694A;}
+
+/* 達成バッジ：めぐった出店が 5/10/20 店の節目に到達したら祝うカード。
+   その瞬間にシェア（画像作成）へ誘導する。黄色アクセントで記念感を出す。 */
+.achievement-badge{
+  margin:0 0 14px;padding:13px 14px;border-radius:12px;
+  background:rgba(232,181,71,.16);border:2px solid var(--ink);box-shadow:var(--hard);
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+}
+.achievement-badge__ico{font-size:30px;line-height:1;flex:0 0 auto;}
+.achievement-badge__text{flex:1 1 120px;min-width:0;}
+.achievement-badge__label{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:2px;}
+.achievement-badge__msg{font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.5;opacity:.85;}
+.achievement-badge__btns{display:flex;gap:9px;flex:1 1 100%;}
+.achievement-badge__btn{
+  flex:1;padding:11px;background:var(--red);color:#fff;
+  border:2px solid var(--ink);border-radius:9px;font-size:13px;font-weight:800;
+  box-shadow:var(--hard);cursor:pointer;transition:.1s;
+}
+.achievement-badge__btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+.achievement-badge__close{
+  padding:11px 16px;background:var(--card);color:var(--sub);
+  border:2px solid var(--soft);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;
+}
+body.night .achievement-badge{background:rgba(232,181,71,.12);}
 
 /* 出店モーダル：行きたい廃止に伴い triple→double レイアウトを追加。
    2ボタンは等幅で並べる。狭い画面（〜425px）ではボタンテキストが

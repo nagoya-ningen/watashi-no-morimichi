@@ -313,6 +313,44 @@
     });
     root.appendChild(bar);
   }
+
+  /* 達成バッジ：めぐった出店（行った）が 5 / 10 / 20 店に達したら、その節目を
+     祝うカードを出し、その瞬間にシェア（画像作成）へ誘導する。
+     到達済みの最上位ティアを表示。一度「閉じる」と、同じティアの間は
+     再表示しない（localStorage に到達済みティアを記録）。
+     次のティアに到達すると再び出る。記録は端末内のみ。 */
+  const BADGE_TIERS = [
+    { n: 20, ico: '🏅', label: '森道マスター', tail: '森道を歩き尽くした記録です。' },
+    { n: 10, ico: '🥈', label: '森道ベテラン', tail: 'たっぷり歩いた三日間でした。' },
+    { n: 5,  ico: '🥉', label: '森道ビギナー', tail: '記録が形になってきました。' }
+  ];
+  function appendAchievementBadge(root) {
+    const v = state.visited.length;
+    const tier = BADGE_TIERS.find(t => v >= t.n);
+    if (!tier) return;
+    let dismissed = '';
+    try { dismissed = localStorage.getItem('mm2026_badge_dismiss') || ''; } catch (e) {}
+    if (dismissed === String(tier.n)) return;
+    const wrap = el('div', 'achievement-badge');
+    wrap.innerHTML =
+      '<div class="achievement-badge__ico">' + tier.ico + '</div>' +
+      '<div class="achievement-badge__text">' +
+        '<div class="achievement-badge__label">' + esc(tier.label) + '</div>' +
+        '<div class="achievement-badge__msg">' + 'めぐった出店 ' + v + ' 店。' + esc(tier.tail) + '</div>' +
+      '</div>';
+    const btnRow = el('div', 'achievement-badge__btns');
+    const shareBtn = el('button', 'achievement-badge__btn', '📸 記念に画像を作成');
+    shareBtn.onclick = exportMyplanImage;
+    const close = el('button', 'achievement-badge__close', '閉じる');
+    close.onclick = () => {
+      try { localStorage.setItem('mm2026_badge_dismiss', String(tier.n)); } catch (e) {}
+      wrap.remove();
+    };
+    btnRow.appendChild(shareBtn);
+    btnRow.appendChild(close);
+    wrap.appendChild(btnRow);
+    root.appendChild(wrap);
+  }
   function secTitle(jp, en) {
     return el('div', 'section-title',
       `<span>${esc(jp)}</span><span class="en">${esc(en)}</span>`);
@@ -794,6 +832,7 @@
     root.innerHTML = '';
     appendInstallCta(root);
     renderMyplanSummary(root);
+    appendAchievementBadge(root);
     const tabs = el('div', 'seg-tabs');
     /* 出店中心の振り返り体験を優先し、めぐった出店を左・観た出演者を右に。
        「めぐった」のカウントは visited + nextYear のユニーク数（行きたい廃止）。 */
@@ -1002,6 +1041,18 @@
     wrap.appendChild(fileInput);
     root.appendChild(wrap);
 
+    /* 来年のリマインダ：森道2027 の情報解禁を逃さないためのカレンダー登録。
+       正式日程は未発表のため「情報をチェックする」リマインダである旨を明記。 */
+    const icsWrap = el('div', 'myplan-settings');
+    icsWrap.innerHTML = '<div class="myplan-settings__head">🗓 来年のリマインダ</div>' +
+      '<div class="myplan-settings__sub">森道市場2027 の日程・チケット・出演者は未発表です。情報解禁を逃さないよう、カレンダーにチェック用のリマインダを登録できます。</div>';
+    const icsRow = el('div', 'myplan-settings__btns');
+    const icsBtn = el('button', 'btn btn--ghost', '🗓 カレンダーに追加（.ics）');
+    icsBtn.onclick = exportReminderIcs;
+    icsRow.appendChild(icsBtn);
+    icsWrap.appendChild(icsRow);
+    root.appendChild(icsWrap);
+
     /* リセットセクション：行った・来年・観たアーティストの選択を全削除する。
        破壊的操作なので確認モーダルを必ず挟む。
        メモ・行った日・テーマ設定は別概念なので保持する。 */
@@ -1096,6 +1147,24 @@
     return SHARE_THEMES.moss;
   }
 
+  /* シェア画像に焼き込む「自分の一言」。表紙の特集コピー下に置く任意テキスト。
+     端末内（localStorage）のみ。最大28文字に丸める（表紙幅に収めるため）。 */
+  const ONELINER_MAX = 28;
+  function getShareOneLiner() {
+    try {
+      const s = localStorage.getItem('mm2026_share_oneliner');
+      if (typeof s === 'string') return [...s].slice(0, ONELINER_MAX).join('');
+    } catch (e) {}
+    return '';
+  }
+  function setShareOneLiner(s) {
+    try {
+      const t = [...String(s || '')].slice(0, ONELINER_MAX).join('').replace(/[\r\n]+/g, ' ');
+      localStorage.setItem('mm2026_share_oneliner', t);
+      return t;
+    } catch (e) { return ''; }
+  }
+
   /* マイプランカード画像を 1080x1920（9:16）で描画して canvas を返す。
      コンセプト：Magazine B 型「雑誌の表紙」。アースカラー3色で構成。
      系統：Casa BRUTUS / POPEYE 建築×ランドスケープ号の配色。
@@ -1174,6 +1243,28 @@
       featureLine = '来年こそは、' + nextYr + ' 店。';
     }
     ctx.fillText(featureLine, W/2, 510);
+
+    /* 5.5 自分の一言（任意）：特集コピーの下、目次見出しの上の余白に置く。
+       雑誌の表紙の「リード文」のように、個人の声を1行だけ焼き込む。
+       未設定なら何も描かない（レイアウトに影響しない）。 */
+    const oneLiner = getShareOneLiner();
+    if (oneLiner) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = COLOR.mustard;
+      ctx.font = 'italic 500 34px ' + FONT.mincho;
+      const ow = ctx.measureText('「' + oneLiner + '」').width;
+      const maxOw = W - 200;
+      let txt = '「' + oneLiner + '」';
+      if (ow > maxOw) {
+        /* 念のため幅でも丸める（全角幅の差を吸収） */
+        let body = oneLiner;
+        while (body.length > 0 && ctx.measureText('「' + body + '…」').width > maxOw) {
+          body = body.slice(0, -1);
+        }
+        txt = '「' + body + '…」';
+      }
+      ctx.fillText(txt, W/2, 580);
+    }
 
     /* 6. 目次見出し（左寄せ、マスタード、等幅小） */
     ctx.textAlign = 'left';
@@ -1370,6 +1461,12 @@
       '</div>' +
       '<p class="image-preview__themehead">色を選ぶ</p>' +
       '<div class="theme-chips" id="ipThemes">' + swatchHtml + '</div>' +
+      '<div class="image-oneliner" id="ipOnelinerWrap">' +
+        '<label class="image-preview__themehead" for="ipOneliner">ひとこと（任意・最大' + ONELINER_MAX + '字）</label>' +
+        '<input type="text" id="ipOneliner" class="image-oneliner__input" ' +
+          'maxlength="' + ONELINER_MAX + '" placeholder="例：全部は回りきれなかった三日間。" ' +
+          'value="' + esc(getShareOneLiner()) + '">' +
+      '</div>' +
       '<p class="image-preview__hint">画像を長押し（スマホ）でカメラロールに保存できます。下のボタンからもシェア／保存できます。</p>' +
       '<div class="modal__btns">' +
         '<button class="btn btn--primary" id="ipShare">シェア／保存する</button>' +
@@ -1382,6 +1479,13 @@
       const img = $('#ipImg');
       if (img) img.src = currentCanvas.toDataURL('image/png');
     }
+    /* ひとこと入力欄は「出店+来年」の表紙にのみ焼き込まれるため、
+       その種類を選んでいるときだけ表示する。 */
+    function toggleOnelinerVisibility() {
+      const wrap = $('#ipOnelinerWrap');
+      if (wrap) wrap.style.display = (currentType === 'shops') ? '' : 'none';
+    }
+    toggleOnelinerVisibility();
     $$('#ipTypes .image-type-tab').forEach(tab => {
       tab.onclick = () => {
         if (tab.classList.contains('is-disabled')) return;
@@ -1389,9 +1493,18 @@
         if (!TYPES[id]) return;
         currentType = id;
         $$('#ipTypes .image-type-tab').forEach(t => t.classList.toggle('is-active', t === tab));
+        toggleOnelinerVisibility();
         rerenderCanvas();
       };
     });
+    /* ひとこと入力：入力のたびに保存して表紙を再描画（ライブプレビュー）。 */
+    const onelinerInput = $('#ipOneliner');
+    if (onelinerInput) {
+      onelinerInput.oninput = () => {
+        setShareOneLiner(onelinerInput.value);
+        if (currentType === 'shops') rerenderCanvas();
+      };
+    }
     /* テーマチップのクリックで canvas を再生成、保存テーマを更新 */
     $$('#ipThemes .theme-chip').forEach(chip => {
       chip.onclick = () => {
@@ -1784,6 +1897,51 @@
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
     toast('マイプランを書き出しました');
+  }
+
+  /* 来年の森道シーズンに向けたリマインダを .ics（iCalendar）で書き出す。
+     森道市場2027 の正式日程・チケット・出演者は未発表のため、これは
+     「そろそろ情報をチェックする」ための個人用リマインダ。説明文に
+     未確定である旨を明記し、公式日程と誤認されないようにする。
+     例年の傾向（5月開催・冬〜春にチケット/出演発表）を踏まえ、
+     情報解禁を逃さない 2027-02-01 を終日予定として置く。 */
+  function exportReminderIcs() {
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+    const uid = 'morimichi2027-reminder-' + Date.now() + '@watashi-no-morimichi';
+    /* iCalendar は1行75オクテット制限・CRLF区切り。長い DESCRIPTION は
+       \n でエスケープ（実改行ではなくテキストとして）。 */
+    const desc = '森道市場2027 の正式日程・チケット・出演者はまだ未発表です。'
+      + '冬〜春に情報が解禁される傾向があるので、公式の発表をチェックしましょう。'
+      + '\\nこれは非公式アプリ「わたしの森道」が作成した個人用のリマインダです。';
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//watashi-no-morimichi//morimichi reminder//JP',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      'UID:' + uid,
+      'DTSTAMP:' + stamp,
+      'DTSTART;VALUE=DATE:20270201',
+      'DTEND;VALUE=DATE:20270202',
+      'SUMMARY:森道市場2027 そろそろ? 情報をチェック',
+      'DESCRIPTION:' + desc,
+      'BEGIN:VALARM',
+      'TRIGGER:PT0S',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:森道市場2027 をチェック',
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ];
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'morimichi-2027-reminder.ics';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    toast('来年のリマインダを書き出しました');
   }
 
   /* JSONファイルを読み込み、現在のデータを上書き

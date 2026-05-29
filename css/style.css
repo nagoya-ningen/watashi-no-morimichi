@@ -584,6 +584,29 @@ body.night .reset-confirm__list li b{color:#E8694A;}
 body.night .myplan-share-cta{background:var(--card);}
 body.night .myplan-share-cta__sub{opacity:.9;}
 
+/* アフターパーティ導線：記録（わたしの森道）→ 公開フィードへのファネル接続。
+   share-cta と差別化するため淡い朱の塗り＋朱ボーダーで「外へ出る次の一歩」を示す。 */
+.afterparty-cta{
+  margin-top:24px;padding:18px 16px;border-radius:14px;
+  background:rgba(196,76,46,.07);border:2.5px solid var(--red);box-shadow:var(--hard);
+}
+.afterparty-cta__head{
+  font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px;letter-spacing:.01em;
+}
+.afterparty-cta__sub{
+  font-size:12px;color:var(--ink);font-weight:600;line-height:1.6;margin-bottom:14px;opacity:.85;
+}
+.afterparty-cta__btn{
+  display:block;width:100%;padding:14px;
+  background:#fff;color:var(--red-d);
+  border:2.5px solid var(--red-d);border-radius:11px;
+  font-size:15px;font-weight:800;letter-spacing:.02em;
+  box-shadow:var(--hard);cursor:pointer;transition:.1s;
+}
+.afterparty-cta__btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+body.night .afterparty-cta{background:rgba(217,98,74,.12);}
+body.night .afterparty-cta__btn{background:var(--card);color:#E8694A;border-color:#E8694A;}
+
 /* 出店モーダル：行きたい廃止に伴い triple→double レイアウトを追加。
    2ボタンは等幅で並べる。狭い画面（〜425px）ではボタンテキストが
    詰まるため padding を抑える。 */

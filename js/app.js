@@ -882,9 +882,25 @@
     root.appendChild(shareWrap);
   }
 
-  /* マイプラン最下段の「設定」セクション：エクスポート／インポートのみ。
+  /* アフターパーティ導線：記録した感想を公開フィードへ繋ぐファネルの接続点。
+     わたしの森道（記録）→ アフターパーティ（公開・みんなの森道）への橋渡し。
+     全状態で表示されるよう appendMyplanSettings の先頭で呼ぶ。 */
+  function appendAfterpartyCta(root) {
+    const wrap = el('div', 'afterparty-cta');
+    wrap.innerHTML =
+      '<div class="afterparty-cta__head">📣 みんなの森道を見る・感想を投稿する</div>' +
+      '<div class="afterparty-cta__sub">記録した感想は、公開フィード「アフターパーティ」に投稿できます。新着順に並ぶみんなの森道を読み合えます。</div>';
+    const btn = el('button', 'afterparty-cta__btn', 'アフターパーティを開く →');
+    btn.onclick = () => openUrl('https://nagoya-ningen.github.io/morimichi-afterparty/');
+    wrap.appendChild(btn);
+    root.appendChild(wrap);
+  }
+
+  /* マイプラン最下段の「設定」セクション：アフターパーティ導線＋エクスポート／インポート。
      画像作成 CTA はトップタブ直下に分離（appendMyplanShareCta）。 */
   function appendMyplanSettings(root) {
+
+    appendAfterpartyCta(root);
 
     const wrap = el('div', 'myplan-settings');
     wrap.innerHTML = '<div class="myplan-settings__head">⚙️ データの保存</div>' +

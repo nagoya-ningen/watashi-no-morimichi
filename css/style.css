@@ -170,15 +170,6 @@ main{
 }
 .notice a{color:var(--ink2);font-weight:800;}
 
-/* マイプラン → マップ動線ボタン */
-.plan-map-btn{
-  display:block;width:100%;margin:2px 0 12px;
-  background:var(--red);color:#fff;border:2.5px solid var(--ink);
-  border-radius:12px;padding:12px;font-size:13px;font-weight:800;
-  box-shadow:var(--hard);cursor:pointer;
-}
-.plan-map-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
-
 /* ---------- 検索・フィルタ ---------- */
 .searchbar{position:relative;margin-bottom:10px;}
 /* 出店・出演者の検索バーはスクロールしても上部に残す（長い一覧で絞り込みやすく） */
@@ -373,9 +364,9 @@ body.night .tile--visited{background:linear-gradient(180deg,#2a3a2a 0%,var(--car
 /* マイプラン：第2層チップ群（行きたい／行った／来年）
    未選択は白／暗グレー。選択中は3軸の色で塗り分けて、タイル・モーダル・
    マップピンと同じ色のメンタルマップを保つ。 */
-.chips--sub{margin-bottom:10px;}
+/* CTA カードとサブタブの間に余白を確保（上に重なって見えるのを防ぐ） */
+.chips--sub{margin-top:14px;margin-bottom:10px;}
 .chips--sub .chip{background:#ffffff;color:#1a1a1a;border-color:#1a1a1a;}
-.chips--sub .chip.active[data-sub="wishlist"]{background:var(--state-wish);color:#fff;}
 .chips--sub .chip.active[data-sub="visited"] {background:var(--state-visited);color:#fff;}
 .chips--sub .chip.active[data-sub="nextyear"]{background:var(--state-next);color:#fff;}
 body.night .chips--sub .chip{background:#2c2f38;color:#f1ede3;border-color:#f1ede3;}
@@ -390,20 +381,7 @@ body.night .chips--sub .chip.active{color:#fff;}
 .tile__notebody{font-size:11px;color:var(--ink);font-weight:600;line-height:1.4;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
 
-/* マイプラン：「今年の心残り」サジェストカード
-   ライトモードは淡ベージュ＋黒文字、ダークモードは暗ベージュ＋クリーム文字に
-   切り替えてコントラスト比を確保する。 */
-.regret-card{
-  margin:8px 0 14px;padding:12px;border:2.5px solid var(--ink);border-radius:12px;
-  background:#fff6e9;box-shadow:var(--hard);color:#1a1a1a;
-}
-.regret-card__head{font-size:13px;font-weight:800;margin-bottom:4px;color:inherit;}
-.regret-card__sub{font-size:11px;color:#5a5a5a;font-weight:600;line-height:1.5;margin-bottom:8px;}
-.regret-card__btn{width:100%;}
-body.night .regret-card{background:#3a2f24;color:#f1ede3;}
-body.night .regret-card__sub{color:#c8b9a3;}
-
-/* マイプラン：オンボーディング（3軸とも0件のとき表示） */
+/* マイプラン：オンボーディング（2軸とも0件のとき表示） */
 .myplan-onboard{
   margin:6px 0 22px;padding:14px 14px 12px;
   border:2.5px solid var(--ink);border-radius:14px;background:var(--card);

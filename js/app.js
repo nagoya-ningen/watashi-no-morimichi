@@ -1679,7 +1679,8 @@
     ctx.closePath();
   }
 
-  /* 全マイプランデータを1ファイルにまとめてダウンロード */
+  /* 全マイプランデータを1ファイルにまとめてダウンロード。
+     attendedDays（行った日選択）も含めて、機種変更でも完全復元できるようにする。 */
   function exportMyplan() {
     const payload = {
       version: 1,
@@ -1689,6 +1690,7 @@
         fav: state.fav,
         visited: state.visited,
         nextYear: state.nextYear,
+        attendedDays: state.attendedDays,
         notes: state.notes,
         checks: state.checks
       }
@@ -1713,7 +1715,11 @@
     reader.onload = (e) => {
       try {
         const obj = JSON.parse(e.target.result);
-        if (!obj || obj.app !== 'watashi-no-morimichi' || obj.version !== 1 || !obj.data) {
+        /* 旧名 'morimichi2026'（森道アプリ内マイプラン機能時代）の書き出しも受け入れる。
+           識別子のみが異なり、データ構造は同じなので、ユーザーが
+           旧アプリからのバックアップを引き継げる。 */
+        const validApp = obj && (obj.app === 'watashi-no-morimichi' || obj.app === 'morimichi2026');
+        if (!validApp || obj.version !== 1 || !obj.data) {
           alert('このファイルはマイプランの書き出しファイルではないようです。');
           return;
         }
@@ -1733,9 +1739,15 @@
           if (fa && fs) state.fav = { artists: fa, shops: fs };
           else skipped++;
         }
-        /* visited / nextYear は文字列配列 */
+        /* visited / nextYear / attendedDays は文字列配列 */
         const vis = strArr(d.visited); if (vis) state.visited = vis;
         const ny  = strArr(d.nextYear); if (ny)  state.nextYear = ny;
+        /* attendedDays は dayId（'d1'/'d2'/'d3'）のみを受け入れる。
+           旧バックアップ（attendedDays 未保存）の場合は既存値を保持。 */
+        if (Array.isArray(d.attendedDays)) {
+          const validDayIds = FESTIVAL.days.map(x => x.id);
+          state.attendedDays = d.attendedDays.filter(x => validDayIds.indexOf(x) !== -1);
+        }
         /* notes は {[id]: NoteObj}。要素単位で型検証してから移植。
            setNote を経由すると updatedAt が現在時刻で上書きされてしまうため、
            インポート時はファイル側の updatedAt を尊重する。 */
@@ -1758,13 +1770,15 @@
           state.checks = d.checks;
         }
         sanitizeState();
-        saveFav(); saveVisited(); saveNextYear(); saveNotes();
+        saveFav(); saveVisited(); saveNextYear(); saveNotes(); saveAttendedDays();
         save('mm2026_checks', state.checks);
         toast(skipped > 0
           ? 'マイプランを読み込みました（' + skipped + '件の不正データはスキップ）'
           : 'マイプランを読み込みました');
+        renderHeader();  /* 行った日タブの選択状態を再描画 */
         renderMyplan(); updateTabBadge();
         if (state.view === 'shops') renderShopList();
+        if (state.view === 'artists') renderArtistList();
       } catch (err) {
         alert('ファイルを読み込めませんでした：' + (err && err.message ? err.message : err));
       }

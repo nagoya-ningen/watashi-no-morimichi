@@ -236,6 +236,83 @@
     clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2000);
   }
   function openUrl(u) { window.open(u, '_blank', 'noopener'); }
+
+  /* ---- PWA インストール誘導 ----
+     Android/Chrome は beforeinstallprompt を捕捉して「ホーム画面に追加」ボタンを出す。
+     iOS Safari は beforeinstallprompt 非対応なので、手動手順カードを出し分ける。
+     一度閉じたら localStorage で再表示を抑制する。 */
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (state.view === 'myplan') renderMyplan();
+  });
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true;
+  }
+  function isIOS() {
+    const ua = navigator.userAgent || '';
+    return /iP(hone|ad|od)/.test(ua) ||
+           (/Mac/.test(navigator.platform || '') && navigator.maxTouchPoints > 1);
+  }
+  function installDismissed() {
+    try { return localStorage.getItem('mm2026_install_dismiss') === '1'; }
+    catch (e) { return false; }
+  }
+  function appendInstallCta(root) {
+    if (isStandalone() || installDismissed()) return;
+    if (!deferredInstallPrompt && !isIOS()) return;
+    const wrap = el('div', 'install-cta');
+    const body = deferredInstallPrompt
+      ? '<div class="install-cta__sub">ホーム画面に追加すると、アプリのように1タップで開けます。記録は端末の中だけに残ります。</div>'
+      : '<div class="install-cta__sub">Safari下部の「共有」から「ホーム画面に追加」を選ぶと、アプリのように開けます。記録は端末の中だけに残ります。</div>';
+    wrap.innerHTML = '<div class="install-cta__head">📲 ホーム画面に追加</div>' + body;
+    const btnRow = el('div', 'install-cta__btns');
+    if (deferredInstallPrompt) {
+      const add = el('button', 'install-cta__btn', 'ホーム画面に追加');
+      add.onclick = async () => {
+        const p = deferredInstallPrompt;
+        deferredInstallPrompt = null;
+        try { p.prompt(); await p.userChoice; } catch (e) {}
+        renderMyplan();
+      };
+      btnRow.appendChild(add);
+    }
+    const close = el('button', 'install-cta__close', '閉じる');
+    close.onclick = () => {
+      try { localStorage.setItem('mm2026_install_dismiss', '1'); } catch (e) {}
+      wrap.remove();
+    };
+    btnRow.appendChild(close);
+    wrap.appendChild(btnRow);
+    root.appendChild(wrap);
+  }
+
+  /* マイプラン上部の記録サマリーバー：行った/来年/メモ/観た の件数を一覧化。
+     「自分の記録がどれだけ溜まったか」を可視化し、シェアの動機づけにする。 */
+  function renderMyplanSummary(root) {
+    const visitedN = state.visited.length;
+    const nextN = state.nextYear.length;
+    const memoN = Object.keys(state.notes).filter(k => {
+      const n = state.notes[k];
+      return n && ((n.body && n.body.trim()) || (n.tags && n.tags.length));
+    }).length;
+    const artistN = state.fav.artists.length;
+    if (visitedN + nextN + memoN + artistN === 0) return;
+    const bar = el('div', 'myplan-summary');
+    [['✅', visitedN, '行った'],
+     ['🌱', nextN, '来年こそは'],
+     ['📝', memoN, 'メモ'],
+     ['🎤', artistN, '観た']
+    ].forEach(item => {
+      bar.appendChild(el('div', 'myplan-summary__item',
+        '<span class="myplan-summary__ico">' + item[0] + '</span>' +
+        '<b class="en">' + item[1] + '</b>' +
+        '<span class="myplan-summary__lbl">' + item[2] + '</span>'));
+    });
+    root.appendChild(bar);
+  }
   function secTitle(jp, en) {
     return el('div', 'section-title',
       `<span>${esc(jp)}</span><span class="en">${esc(en)}</span>`);
@@ -715,6 +792,8 @@
   function renderMyplan() {
     const root = $('#view-myplan');
     root.innerHTML = '';
+    appendInstallCta(root);
+    renderMyplanSummary(root);
     const tabs = el('div', 'seg-tabs');
     /* 出店中心の振り返り体験を優先し、めぐった出店を左・観た出演者を右に。
        「めぐった」のカウントは visited + nextYear のユニーク数（行きたい廃止）。 */

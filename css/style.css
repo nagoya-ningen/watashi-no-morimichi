@@ -585,6 +585,43 @@ body.night .myplan-share-cta__sub{opacity:.9;}
 body.night .afterparty-cta{background:rgba(217,98,74,.12);}
 body.night .afterparty-cta__btn{background:var(--card);color:#E8694A;border-color:#E8694A;}
 
+/* PWAインストール誘導カード：深藍ベースで「アプリの提案」を控えめに示す。
+   閉じるボタンを併設し、しつこくならないよう一度閉じたら再表示しない。 */
+.install-cta{
+  margin:0 0 14px;padding:14px 14px;border-radius:12px;
+  background:rgba(44,77,90,.08);border:2px solid var(--teal);box-shadow:var(--hard);
+}
+.install-cta__head{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:5px;}
+.install-cta__sub{font-size:11.5px;color:var(--ink);font-weight:600;line-height:1.55;
+  margin-bottom:12px;opacity:.85;}
+.install-cta__btns{display:flex;gap:9px;}
+.install-cta__btn{
+  flex:1;padding:11px;background:var(--teal);color:#fff;
+  border:2px solid var(--ink);border-radius:9px;font-size:13px;font-weight:800;
+  box-shadow:var(--hard);cursor:pointer;transition:.1s;
+}
+.install-cta__btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+.install-cta__close{
+  padding:11px 16px;background:var(--card);color:var(--sub);
+  border:2px solid var(--soft);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;
+}
+body.night .install-cta{background:rgba(90,125,138,.14);}
+
+/* 記録サマリーバー：行った/来年/メモ/観た の件数を横並びで可視化。
+   「自分の記録量」を一目で見せ、もう一歩記録する・シェアする動機にする。 */
+.myplan-summary{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 14px;
+}
+.myplan-summary__item{
+  background:var(--card);border:2px solid var(--ink);border-radius:10px;
+  box-shadow:var(--hard);padding:9px 4px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+}
+.myplan-summary__ico{font-size:14px;line-height:1.1;}
+.myplan-summary__item b{font-size:20px;font-weight:800;color:var(--red-d);line-height:1.1;}
+.myplan-summary__lbl{font-size:9.5px;font-weight:700;color:var(--sub);letter-spacing:.02em;}
+body.night .myplan-summary__item b{color:#E8694A;}
+
 /* 出店モーダル：行きたい廃止に伴い triple→double レイアウトを追加。
    2ボタンは等幅で並べる。狭い画面（〜425px）ではボタンテキストが
    詰まるため padding を抑える。 */
